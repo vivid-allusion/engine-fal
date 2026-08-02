@@ -1,0 +1,45 @@
+id = "flux-schnell"
+label = "Flux Schnell"
+category = "IMG"
+platform = "fal"
+endpoint = "fal-ai/flux/schnell"
+description = "Flux Schnell — the fastest Flux image generation model. Optimized for speed, 1-4 steps. Ideal for rapid iteration and prototyping."
+
+[pricing]
+base_cost = 0.003
+currency = "USD"
+note = "Fastest Flux variant — lowest cost per image"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "1:1",   label = "1:1 · Square" },
+  { value = "2:3",   label = "2:3 · Portrait" },
+  { value = "3:2",   label = "3:2 · Landscape" },
+  { value = "4:3",   label = "4:3 · Classic" },
+  { value = "3:4",   label = "3:4 · Portrait" },
+  { value = "9:16",  label = "9:16 · Vertical" },
+  { value = "16:9",  label = "16:9 · Landscape · Standard" },
+  { value = "21:9",  label = "21:9 · Ultrawide" },
+]
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "1K"
+optional = true
+options = [
+  { value = "512px", label = "512px · Fastest" },
+  { value = "1K",    label = "1K (1024px) · Standard" },
+  { value = "2K",    label = "2K (2048px) · High Quality" },
+]
+
+[params.num_images]
+label = "Number of Images"
+type = "integer"
+default = 1
+min = 1
+max = 4

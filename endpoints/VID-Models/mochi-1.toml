@@ -1,0 +1,43 @@
+id = "mochi-1"
+label = "Mochi 1"
+category = "VID"
+platform = "fal"
+endpoint = "fal-ai/mochi-v1"
+description = "Mochi 1 — open-source video generation model. 480p video with good motion quality. Cost-effective for high-volume video generation."
+
+[pricing]
+base_cost = 0.10
+currency = "USD"
+note = "Open-source model — lower cost per second"
+
+[general]
+image_url_param = "image_url"
+duration_type = "seconds"
+duration_param_name = "duration"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "16:9", label = "16:9 · Landscape" },
+  { value = "9:16", label = "9:16 · Portrait" },
+  { value = "1:1",  label = "1:1 · Square" },
+]
+
+[params.duration]
+label = "Duration"
+type = "select"
+default = "5"
+options = [
+  { value = "3", label = "3s · Short" },
+  { value = "5", label = "5s · Standard" },
+  { value = "10", label = "10s · Long" },
+]
+
+[params.negative_prompt]
+label = "Negative Prompt"
+type = "text"
+optional = true
+default = ""

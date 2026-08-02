@@ -1,0 +1,52 @@
+id = "flux-pro"
+label = "Flux Pro"
+category = "IMG"
+platform = "fal"
+endpoint = "fal-ai/flux-pro"
+description = "Flux Pro — highest quality Flux image generation. Full 50-step diffusion. Best for final outputs and production-quality stills."
+
+[pricing]
+base_cost = 0.05
+currency = "USD"
+note = "Highest quality Flux variant"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "1:1",   label = "1:1 · Square" },
+  { value = "2:3",   label = "2:3 · Portrait" },
+  { value = "3:2",   label = "3:2 · Landscape" },
+  { value = "4:3",   label = "4:3 · Classic" },
+  { value = "3:4",   label = "3:4 · Portrait" },
+  { value = "9:16",  label = "9:16 · Vertical" },
+  { value = "16:9",  label = "16:9 · Landscape · Standard" },
+  { value = "21:9",  label = "21:9 · Ultrawide" },
+]
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "1K"
+optional = true
+options = [
+  { value = "1K", label = "1K (1024px) · Standard" },
+  { value = "2K", label = "2K (2048px) · High Quality" },
+  { value = "4K", label = "4K (4096px) · Maximum" },
+]
+
+[params.num_images]
+label = "Number of Images"
+type = "integer"
+default = 1
+min = 1
+max = 4
+
+[params.guidance_scale]
+label = "Guidance Scale"
+type = "number"
+default = 3.5
+min = 1.0
+max = 10.0

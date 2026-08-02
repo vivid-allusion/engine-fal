@@ -1,0 +1,5 @@
+PROVIDER_NAME = "Fal.ai"
+PROVIDER_HOMEPAGE = "https://fal.ai"
+PLATFORM = "fal"
+API_KEY_ENV_VAR = "FAL_KEY"
+API_KEY_PATTERN = r"^[A-Za-z0-9-]{20,}$"

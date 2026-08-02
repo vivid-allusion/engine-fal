@@ -1,0 +1,24 @@
+[project]
+name = "engine-fal"
+version = "0.1.0"
+description = "Engine wrapper for the Fal.ai API. Uniform interface that studiolot Vehicles call instead of importing the Fal SDK directly."
+requires-python = ">=3.10"
+dependencies = [
+    "fal>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-mock>=3.0",
+]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.setuptools]
+packages = ["."]
+
+[tool.setuptools.package-data]
+engine_fal = ["endpoints/**/*.toml"]

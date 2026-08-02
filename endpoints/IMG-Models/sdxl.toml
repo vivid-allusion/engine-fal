@@ -1,0 +1,49 @@
+id = "sdxl"
+label = "Stable Diffusion XL"
+category = "IMG"
+platform = "fal"
+endpoint = "fal-ai/stable-diffusion-v35-large"
+description = "Stable Diffusion 3.5 Large — open-source image generation. High quality, flexibly licensed. Good general-purpose model."
+
+[pricing]
+base_cost = 0.002
+currency = "USD"
+note = "Open-source model — lower cost"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "1:1",   label = "1:1 · Square" },
+  { value = "2:3",   label = "2:3 · Portrait" },
+  { value = "3:2",   label = "3:2 · Landscape" },
+  { value = "4:3",   label = "4:3 · Classic" },
+  { value = "9:16",  label = "9:16 · Vertical" },
+  { value = "16:9",  label = "16:9 · Landscape" },
+]
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "1K"
+optional = true
+options = [
+  { value = "512px", label = "512px · Fast" },
+  { value = "1K",    label = "1K (1024px) · Standard" },
+  { value = "2K",    label = "2K (2048px) · High Quality" },
+]
+
+[params.num_images]
+label = "Number of Images"
+type = "integer"
+default = 1
+min = 1
+max = 4
+
+[params.negative_prompt]
+label = "Negative Prompt"
+type = "text"
+optional = true
+default = ""
