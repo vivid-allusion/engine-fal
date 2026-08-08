@@ -1,0 +1,15 @@
+# Flux Schnell — 16X9
+platform: fal
+endpoint: fal-ai/flux/schnell
+media_type: image
+parameters:
+  aspect_ratio: "16:9"
+  resolution: "1K"
+  num_images: 1
+pricing:
+  base_cost: 0.003
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

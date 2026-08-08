@@ -1,0 +1,14 @@
+# Ideogram v2 — 1X1
+platform: fal
+endpoint: fal-ai/ideogram/v2
+media_type: image
+parameters:
+  aspect_ratio: "1:1"
+  resolution: "1K"
+pricing:
+  base_cost: 0.04
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

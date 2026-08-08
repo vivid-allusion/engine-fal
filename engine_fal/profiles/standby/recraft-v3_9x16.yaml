@@ -1,0 +1,14 @@
+# Recraft v3 — 9X16
+platform: fal
+endpoint: fal-ai/recraft-v3
+media_type: image
+parameters:
+  aspect_ratio: "9:16"
+  resolution: "1K"
+pricing:
+  base_cost: 0.04
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''
