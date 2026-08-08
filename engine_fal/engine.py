@@ -99,8 +99,8 @@ class Engine:
         return results
 
     def _validate_preflight(self):
-        if "endpoint" not in self._profile:
-            raise EngineError("Missing 'endpoint' in profile")
+        if not self._profile.get("endpoint"):
+            raise EngineError("Missing or empty 'endpoint' in profile")
         try:
             import fal_client
         except ImportError:
