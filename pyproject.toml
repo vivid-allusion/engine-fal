@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Engine wrapper for the Fal.ai API. Uniform interface that studiolot Vehicles call instead of importing the Fal SDK directly."
 requires-python = ">=3.10"
 dependencies = [
-    "fal>=1.0",
+    "fal-client>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -21,4 +21,4 @@ build-backend = "setuptools.backends._legacy:_Backend"
 packages = ["engine_fal"]
 
 [tool.setuptools.package-data]
-engine_fal = ["endpoints/**/*.toml", "endpoints/**/*.gitkeep"]
+engine_fal = ["endpoints/**/*.toml", "endpoints/**/*.gitkeep", "profiles/standby/*.yaml", "profiles/standby/*.gitkeep"]

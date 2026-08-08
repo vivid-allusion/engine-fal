@@ -1,1 +1,1 @@
-fal>=1.0
+fal-client>=1.0

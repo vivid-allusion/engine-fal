@@ -13,7 +13,7 @@ class InputFile:
 
 @dataclass
 class OutputFile:
-    bullet_path: Path
+    source_path: Path
     path: Path | None = None
     status: Literal["ok", "error"] = "ok"
     error_msg: str = ""
@@ -25,6 +25,8 @@ class OutputFile:
 class ProgressEvent:
     message: str
     level: str = "info"
+    current: int = 0
+    total: int = 0
 
 
 class EngineError(Exception):

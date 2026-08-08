@@ -1,6 +1,6 @@
 import os
 import urllib.request
-import uuid
+from datetime import datetime
 from pathlib import Path
 
 from .datatypes import EngineError, InputFile, OutputFile, ProgressEvent
@@ -30,9 +30,8 @@ class Engine:
     def run(self, inputs: list[InputFile]) -> list[OutputFile]:
         self._validate_preflight()
 
-        import fal
+        import fal_client
 
-        client = fal.Client(key=self._resolve_api_key())
         endpoint = self._profile["endpoint"]
         params = dict(self._profile.get("parameters", {}))
         media_type = self._profile.get("media_type", "")
@@ -42,11 +41,15 @@ class Engine:
         total = len(inputs)
 
         for idx, item in enumerate(inputs):
-            self._emit(f"Processing bullet {idx + 1}/{total}...")
+            stem = item.path.stem
+            current = idx + 1
+            prefix = f"[{current}/{total}]"
+
+            self._emit(f"{prefix} 📡 Calling Fal.ai API...")
             prompt = f"{self._prefix}{item.prompt}{self._suffix}".strip()
             if not prompt:
                 output = OutputFile(
-                    bullet_path=item.path,
+                    source_path=item.path,
                     status="error",
                     error_msg="Empty prompt after applying prefix/suffix",
                     media_type=media_type,
@@ -58,21 +61,23 @@ class Engine:
                 fal_input = self._build_fal_input(
                     params, prompt, item, media_type
                 )
-                raw_output = client.run(endpoint, arguments=fal_input)
+                raw_result = fal_client.subscribe(endpoint, arguments=fal_input)
+                self._emit(f"{prefix} ✅ Response received")
 
-                saved = self._save_results(raw_output, media_type)
+                raw_output = self._normalize_result(raw_result, media_type)
+                saved = self._save_results(raw_output, media_type, stem, idx, prefix, current, total)
                 if not saved:
                     output = OutputFile(
-                        bullet_path=item.path,
+                        source_path=item.path,
                         status="error",
-                        error_msg="No output returned from fal",
+                        error_msg="No output returned from fal.ai",
                         media_type=media_type,
                     )
                 else:
                     for saved_path in saved:
                         results.append(
                             OutputFile(
-                                bullet_path=item.path,
+                                source_path=item.path,
                                 path=saved_path,
                                 status="ok",
                                 media_type=media_type,
@@ -81,8 +86,9 @@ class Engine:
                     continue
 
             except Exception as exc:
+                self._emit(f"{prefix} Error: {exc}", level="error", current=current, total=total)
                 output = OutputFile(
-                    bullet_path=item.path,
+                    source_path=item.path,
                     status="error",
                     error_msg=str(exc),
                     media_type=media_type,
@@ -96,10 +102,10 @@ class Engine:
         if "endpoint" not in self._profile:
             raise EngineError("Missing 'endpoint' in profile")
         try:
-            import fal
+            import fal_client
         except ImportError:
             raise EngineError(
-                "fal SDK not installed. Run: pip install fal"
+                "fal-client SDK not installed. Run: pip install fal-client"
             ) from None
         if not self._resolve_api_key():
             raise EngineError(
@@ -107,9 +113,10 @@ class Engine:
             )
 
     def _resolve_api_key(self) -> str:
-        if self._api_key:
-            return self._api_key
-        return os.environ.get(self.API_KEY_ENV_VAR, "")
+        key = self._api_key or os.environ.get(self.API_KEY_ENV_VAR, "")
+        if key and self.API_KEY_ENV_VAR not in os.environ:
+            os.environ[self.API_KEY_ENV_VAR] = key
+        return key
 
     def _build_fal_input(
         self, params: dict, prompt: str, item: InputFile, media_type: str
@@ -118,40 +125,53 @@ class Engine:
         fal_input.pop("prompt_prefix", None)
         fal_input.pop("prompt_suffix", None)
 
-        if media_type == "image":
-            fal_input["prompt"] = prompt
-            if item.reference_urls:
-                fal_input["image_url"] = item.reference_urls[0]
-        elif media_type == "video":
-            fal_input["prompt"] = prompt
-            if item.reference_urls:
-                fal_input["image_url"] = item.reference_urls[0]
-            for key in ("duration", "fps"):
-                if key in item.metadata:
-                    fal_input[key] = item.metadata[key]
-        else:
-            fal_input["prompt"] = prompt
+        ref_key = self._profile.get("reference_param", "image_url")
+
+        fal_input["prompt"] = prompt
+        if item.reference_urls:
+            fal_input[ref_key] = item.reference_urls[0]
 
         return fal_input
 
-    def _save_results(self, raw_output, media_type: str) -> list[Path]:
+    def _normalize_result(self, result, media_type: str) -> list:
+        if not result:
+            return []
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            if "images" in result:
+                return [img["url"] for img in result["images"]]
+            if "video" in result:
+                return [result["video"]["url"]]
+            if "url" in result:
+                return [result["url"]]
+        return []
+
+    def _save_results(self, raw_output, media_type: str, stem: str, idx: int, prefix: str = "", current: int = 0, total: int = 0) -> list[Path]:
         if raw_output is None:
             return []
-        if isinstance(raw_output, str):
+        if not isinstance(raw_output, list):
             raw_output = [raw_output]
 
+        ts = datetime.now().strftime("%y%m%d_%H%M%S")
         saved = []
-        for item in raw_output:
+        for i, item in enumerate(raw_output):
             if isinstance(item, str):
+                self._emit(f"{prefix} ⬇️  Downloading...")
                 ext = self._infer_extension(item, media_type)
-                dest = self._output_dir / f"{uuid.uuid4().hex[:12]}{ext}"
+                suffix = "" if len(raw_output) == 1 else f"_{i}"
+                dest = self._output_dir / f"{stem}-{idx}-{ts}{suffix}{ext}"
                 urllib.request.urlretrieve(item, dest)
+                self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
                 saved.append(dest)
             elif hasattr(item, "read"):
+                self._emit(f"{prefix} ⬇️  Saving file stream...")
                 ext = ".mp4" if media_type == "video" else ".png"
-                dest = self._output_dir / f"{uuid.uuid4().hex[:12]}{ext}"
+                suffix = "" if len(raw_output) == 1 else f"_{i}"
+                dest = self._output_dir / f"{stem}-{idx}-{ts}{suffix}{ext}"
                 with open(dest, "wb") as f:
                     f.write(item.read())
+                self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
                 saved.append(dest)
         return saved
 
@@ -163,6 +183,6 @@ class Engine:
                 return video_ext
         return ".png"
 
-    def _emit(self, message: str, level: str = "info"):
+    def _emit(self, message: str, level: str = "info", current: int = 0, total: int = 0):
         if self._on_progress:
-            self._on_progress(message)
+            self._on_progress(ProgressEvent(message=message, level=level, current=current, total=total))
