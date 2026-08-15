@@ -160,7 +160,7 @@ class Engine:
                 self._emit(f"{prefix} ⬇️  Downloading...")
                 ext = self._infer_extension(item, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = self._output_dir / f"{stem}-{idx}-{ts}{suffix}{ext}"
+                dest = self._output_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 urllib.request.urlretrieve(item, dest)
                 self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
                 saved.append(dest)
@@ -168,7 +168,7 @@ class Engine:
                 self._emit(f"{prefix} ⬇️  Saving file stream...")
                 ext = ".mp4" if media_type == "video" else ".png"
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = self._output_dir / f"{stem}-{idx}-{ts}{suffix}{ext}"
+                dest = self._output_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 with open(dest, "wb") as f:
                     f.write(item.read())
                 self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
