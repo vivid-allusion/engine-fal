@@ -243,6 +243,31 @@ class TestEngineRun:
                     assert results[0].path is not None
                     mock_retrieve.assert_called_once()
 
+    def test_save_results_mirrors_relative_dir(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {"images": [{"url": "https://example.com/img.png"}]}
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve") as mock_retrieve:
+                    mock_retrieve.return_value = (None, None)
+                    engine = Engine(
+                        {"endpoint": "test/model", "media_type": "image"},
+                        tmp_path,
+                    )
+                    results = engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="test",
+                                metadata={"relative_dir": "scene1/nested"},
+                            )
+                        ]
+                    )
+                    assert len(results) == 1
+                    assert results[0].status == "ok"
+                    assert results[0].path is not None
+                    assert results[0].path.parent == tmp_path / "scene1" / "nested"
+
     def test_video_result_normalization(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
             mock_fal_client = MagicMock()

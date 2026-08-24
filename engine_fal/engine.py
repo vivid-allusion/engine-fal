@@ -44,6 +44,7 @@ class Engine:
             stem = item.path.stem
             current = idx + 1
             prefix = f"[{current}/{total}]"
+            rel_dir = str(item.metadata.get("relative_dir", "") or "")
 
             self._emit(f"{prefix} 📡 Calling Fal.ai API...")
             prompt = f"{self._prefix}{item.prompt}{self._suffix}".strip()
@@ -65,7 +66,7 @@ class Engine:
                 self._emit(f"{prefix} ✅ Response received")
 
                 raw_output = self._normalize_result(raw_result, media_type)
-                saved = self._save_results(raw_output, media_type, stem, idx, prefix, current, total)
+                saved = self._save_results(raw_output, media_type, stem, idx, prefix, current, total, rel_dir)
                 if not saved:
                     output = OutputFile(
                         source_path=item.path,
@@ -147,11 +148,14 @@ class Engine:
                 return [result["url"]]
         return []
 
-    def _save_results(self, raw_output, media_type: str, stem: str, idx: int, prefix: str = "", current: int = 0, total: int = 0) -> list[Path]:
+    def _save_results(self, raw_output, media_type: str, stem: str, idx: int, prefix: str = "", current: int = 0, total: int = 0, rel_dir: str = "") -> list[Path]:
         if raw_output is None:
             return []
         if not isinstance(raw_output, list):
             raw_output = [raw_output]
+
+        dest_dir = self._output_dir / rel_dir if rel_dir else self._output_dir
+        dest_dir.mkdir(parents=True, exist_ok=True)
 
         ts = datetime.now().strftime("%y%m%d_%H%M%S")
         saved = []
@@ -160,7 +164,7 @@ class Engine:
                 self._emit(f"{prefix} ⬇️  Downloading...")
                 ext = self._infer_extension(item, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = self._output_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 urllib.request.urlretrieve(item, dest)
                 self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
                 saved.append(dest)
@@ -168,7 +172,7 @@ class Engine:
                 self._emit(f"{prefix} ⬇️  Saving file stream...")
                 ext = ".mp4" if media_type == "video" else ".png"
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = self._output_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 with open(dest, "wb") as f:
                     f.write(item.read())
                 self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
