@@ -64,6 +64,7 @@ class Engine:
                 )
                 raw_result = fal_client.subscribe(endpoint, arguments=fal_input)
                 self._emit(f"{prefix} ✅ Response received")
+                self._emit(f"{prefix} 📦 Payload: {fal_input}")
 
                 raw_output = self._normalize_result(raw_result, media_type)
                 saved = self._save_results(raw_output, media_type, stem, idx, prefix, current, total, rel_dir)
@@ -82,6 +83,7 @@ class Engine:
                                 path=saved_path,
                                 status="ok",
                                 media_type=media_type,
+                                metadata={"api_payload": fal_input},
                             )
                         )
                     continue
