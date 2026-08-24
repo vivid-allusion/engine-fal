@@ -27,6 +27,8 @@ class ProgressEvent:
     level: str = "info"
     current: int = 0
     total: int = 0
+    saved_path: Path | None = None
+    api_payload: dict | None = None
 
 
 class EngineError(Exception):

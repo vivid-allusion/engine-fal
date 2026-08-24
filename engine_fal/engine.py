@@ -67,7 +67,17 @@ class Engine:
                 self._emit(f"{prefix} 📦 Payload: {fal_input}")
 
                 raw_output = self._normalize_result(raw_result, media_type)
-                saved = self._save_results(raw_output, media_type, stem, idx, prefix, current, total, rel_dir)
+                saved = self._save_results(
+                    raw_output,
+                    media_type,
+                    stem,
+                    idx,
+                    prefix,
+                    current,
+                    total,
+                    rel_dir,
+                    fal_input,
+                )
                 if not saved:
                     output = OutputFile(
                         source_path=item.path,
@@ -150,7 +160,18 @@ class Engine:
                 return [result["url"]]
         return []
 
-    def _save_results(self, raw_output, media_type: str, stem: str, idx: int, prefix: str = "", current: int = 0, total: int = 0, rel_dir: str = "") -> list[Path]:
+    def _save_results(
+        self,
+        raw_output,
+        media_type: str,
+        stem: str,
+        idx: int,
+        prefix: str = "",
+        current: int = 0,
+        total: int = 0,
+        rel_dir: str = "",
+        api_payload: dict | None = None,
+    ) -> list[Path]:
         if raw_output is None:
             return []
         if not isinstance(raw_output, list):
@@ -168,7 +189,13 @@ class Engine:
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
                 dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 urllib.request.urlretrieve(item, dest)
-                self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
+                self._emit(
+                    f"{prefix} 💾 Saved: {dest.name}",
+                    current=current,
+                    total=total,
+                    saved_path=dest,
+                    api_payload=api_payload,
+                )
                 saved.append(dest)
             elif hasattr(item, "read"):
                 self._emit(f"{prefix} ⬇️  Saving file stream...")
@@ -177,7 +204,13 @@ class Engine:
                 dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
                 with open(dest, "wb") as f:
                     f.write(item.read())
-                self._emit(f"{prefix} 💾 Saved: {dest.name}", current=current, total=total)
+                self._emit(
+                    f"{prefix} 💾 Saved: {dest.name}",
+                    current=current,
+                    total=total,
+                    saved_path=dest,
+                    api_payload=api_payload,
+                )
                 saved.append(dest)
         return saved
 
@@ -189,6 +222,23 @@ class Engine:
                 return video_ext
         return ".png"
 
-    def _emit(self, message: str, level: str = "info", current: int = 0, total: int = 0):
+    def _emit(
+        self,
+        message: str,
+        level: str = "info",
+        current: int = 0,
+        total: int = 0,
+        saved_path: Path | None = None,
+        api_payload: dict | None = None,
+    ):
         if self._on_progress:
-            self._on_progress(ProgressEvent(message=message, level=level, current=current, total=total))
+            self._on_progress(
+                ProgressEvent(
+                    message=message,
+                    level=level,
+                    current=current,
+                    total=total,
+                    saved_path=saved_path,
+                    api_payload=api_payload,
+                )
+            )
