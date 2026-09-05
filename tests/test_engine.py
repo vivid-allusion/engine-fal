@@ -188,7 +188,7 @@ class TestEngineRun:
                 assert results[0].status == "error"
                 assert "Empty prompt" in results[0].error_msg
 
-    def test_per_bullet_error_returns_error_outputfile(self, tmp_path):
+    def test_per_markdown_error_returns_error_outputfile(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
             mock_fal_client = MagicMock()
             mock_fal_client.subscribe.side_effect = RuntimeError("API timeout")
@@ -215,11 +215,11 @@ class TestEngineRun:
                     {"endpoint": "test/model", "media_type": "image"},
                     tmp_path,
                 )
-                bullets = [
+                md_files = [
                     InputFile(path=Path(f"b{i}.md"), prompt="test")
                     for i in range(3)
                 ]
-                results = engine.run(bullets)
+                results = engine.run(md_files)
                 statuses = [r.status for r in results]
                 assert statuses.count("ok") == 2
                 assert statuses.count("error") == 1
