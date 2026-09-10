@@ -1,7 +1,9 @@
-# Nano Banana 2 — 21X9
+# Nano Banana 2 — 21X9 (image-to-image / reframe)
 platform: fal
-endpoint: fal-ai/nano-banana-2
+endpoint: fal-ai/nano-banana-2/edit
 media_type: image
+reference_param: image_urls
+reference_param_multi: true
 parameters:
   aspect_ratio: "21:9"
   num_images: 1

@@ -349,6 +349,37 @@ class TestEngineRun:
                     arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
                     assert arguments["start_image_url"] == "https://ref.com/img.jpg"
 
+    def test_reference_param_multi_from_profile(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {"images": [{"url": "https://a.com/ok.png"}]}
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "fal-ai/nano-banana-2/edit",
+                            "media_type": "image",
+                            "reference_param": "image_urls",
+                            "reference_param_multi": True,
+                        },
+                        tmp_path,
+                    )
+                    engine.run([
+                        InputFile(
+                            path=Path("b.md"),
+                            prompt="Reframe the provided image",
+                            reference_urls=[
+                                "https://ref.com/img1.jpg",
+                                "https://ref.com/img2.jpg",
+                            ],
+                        )
+                    ])
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert arguments["image_urls"] == [
+                        "https://ref.com/img1.jpg",
+                        "https://ref.com/img2.jpg",
+                    ]
+
     def test_error_emits_progress_event_with_current_total(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
             mock_fal_client = MagicMock()

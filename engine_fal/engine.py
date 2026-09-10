@@ -139,10 +139,13 @@ class Engine:
         fal_input.pop("prompt_suffix", None)
 
         ref_key = self._profile.get("reference_param", "image_url")
+        reference_multi = self._profile.get("reference_param_multi", False)
 
         fal_input["prompt"] = prompt
         if item.reference_urls:
-            fal_input[ref_key] = item.reference_urls[0]
+            fal_input[ref_key] = (
+                list(item.reference_urls) if reference_multi else item.reference_urls[0]
+            )
 
         return fal_input
 
