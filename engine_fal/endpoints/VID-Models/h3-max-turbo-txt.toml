@@ -1,0 +1,80 @@
+id = "h3-max-turbo-txt"
+label = "H3 Max Turbo · Text to Video"
+category = "VID"
+platform = "fal"
+endpoint = "minimax/h3-max-turbo/text-to-video"
+description = "MiniMax H3 Max Turbo text-to-video — post-trained H3 variant tuned for stronger prompt adherence and better aesthetics, running on fal's optimized inference stack. 5-15s clips up to 1080P with balanced or quality prompt expansion."
+
+[pricing]
+cost_per_second = 0.04
+currency = "USD"
+note = "$0.025/s at 480P, $0.04/s at 768P, $0.08/s at 1080P. Promotional 75%-off launch rates ($0.00625/$0.01/$0.02 per second) ran through 2026-09-14."
+
+[general]
+duration_type = "seconds"
+duration_param_name = "duration"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "21:9", label = "21:9 · Ultrawide" },
+  { value = "16:9", label = "16:9 · Landscape" },
+  { value = "4:3",  label = "4:3 · Classic" },
+  { value = "1:1",  label = "1:1 · Square" },
+  { value = "3:4",  label = "3:4 · Portrait" },
+  { value = "9:16", label = "9:16 · Vertical" },
+]
+
+[params.duration]
+label = "Duration"
+type = "select"
+default = "5"
+options = [
+  { value = "5",  label = "5s · Default" },
+  { value = "6",  label = "6s" },
+  { value = "7",  label = "7s" },
+  { value = "8",  label = "8s" },
+  { value = "9",  label = "9s" },
+  { value = "10", label = "10s" },
+  { value = "11", label = "11s" },
+  { value = "12", label = "12s" },
+  { value = "13", label = "13s" },
+  { value = "14", label = "14s" },
+  { value = "15", label = "15s · Max" },
+]
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "768P"
+optional = true
+options = [
+  { value = "480P",  label = "480P · Fastest" },
+  { value = "768P",  label = "768P · Standard" },
+  { value = "1080P", label = "1080P · Native refinement" },
+]
+
+[params.prompt_expansion_mode]
+label = "Prompt Expansion"
+type = "select"
+default = "balanced"
+optional = true
+options = [
+  { value = "balanced", label = "Balanced · ~1s rewrite" },
+  { value = "quality",  label = "Quality · up to ~30s richer rewrite" },
+]
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
