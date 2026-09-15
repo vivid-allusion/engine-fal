@@ -1,4 +1,6 @@
+import json
 import os
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +28,7 @@ class Engine:
         self._on_progress = on_progress
         self._prefix = profile.get("prompt_prefix", "")
         self._suffix = profile.get("prompt_suffix", "")
+        self._input_props_cache: dict | None = None
 
     def run(self, inputs: list[InputFile]) -> list[OutputFile]:
         self._validate_preflight()
@@ -138,6 +141,13 @@ class Engine:
         fal_input.pop("prompt_prefix", None)
         fal_input.pop("prompt_suffix", None)
 
+        if any(isinstance(value, str) for value in fal_input.values()):
+            props = self._input_props()
+            fal_input = {
+                key: self._coerce_param_value(key, value, props)
+                for key, value in fal_input.items()
+            }
+
         ref_key = self._profile.get("reference_param", "image_url")
         reference_multi = self._profile.get("reference_param_multi", False)
 
@@ -148,6 +158,103 @@ class Engine:
             )
 
         return fal_input
+
+    def _input_props(self) -> dict:
+        """Best-effort fetch of the endpoint's Input JSON-schema properties.
+
+        Used to coerce scalar params (integer/number/boolean) that
+        wizard-composed profiles ship as strings. ``$ref``/``allOf``
+        fragments are resolved to concrete type dicts. Cached per Engine
+        instance; returns {} when the schema is unavailable.
+        """
+        if self._input_props_cache is not None:
+            return self._input_props_cache
+        props: dict = {}
+        try:
+            endpoint = str(self._profile.get("endpoint", ""))
+            url = (
+                "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id="
+                f"{urllib.parse.quote(endpoint)}"
+            )
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                schema = json.loads(resp.read().decode("utf-8"))
+            raw = self._input_schema_properties(schema)
+            props = {
+                key: self._resolve_schema_refs(value, schema)
+                for key, value in raw.items()
+                if isinstance(value, dict)
+            }
+        except Exception:
+            props = {}
+        if not isinstance(props, dict):
+            props = {}
+        self._input_props_cache = props
+        return props
+
+    def _input_schema_properties(self, schema: dict) -> dict:
+        """Return the Input schema properties, tolerating any schema name."""
+        schemas = schema.get("components", {}).get("schemas", {}) or {}
+        for name in ("Input", *schemas.keys()):
+            entry = schemas.get(name)
+            if (
+                name.endswith("Input")
+                and isinstance(entry, dict)
+                and isinstance(entry.get("properties"), dict)
+            ):
+                return entry["properties"]
+        return {}
+
+    def _resolve_schema_refs(self, node, root: dict):
+        """Resolve ``$ref``/``allOf`` fragments into a concrete schema dict."""
+        if not isinstance(node, dict):
+            return node
+        resolved: dict = {}
+        if "$ref" in node and isinstance(node["$ref"], str):
+            target = root
+            for part in node["$ref"].lstrip("#/").split("/"):
+                target = target.get(part) if isinstance(target, dict) else None
+                if target is None:
+                    break
+            if isinstance(target, dict):
+                resolved.update(self._resolve_schema_refs(target, root))
+        resolved.update({k: v for k, v in node.items() if k not in ("$ref", "allOf")})
+        for fragment in node.get("allOf", []):
+            merged = self._resolve_schema_refs(fragment, root)
+            if isinstance(merged, dict):
+                for key, value in merged.items():
+                    resolved.setdefault(key, value)
+        return resolved
+
+    def _coerce_param_value(self, key: str, value, props: dict):
+        """Coerce a scalar parameter against the endpoint's schema type.
+
+        Integer-typed params (duration, fps, ...) receive an int when the
+        profile ships a numeric string; number/boolean params coerce
+        likewise. Non-convertible values (e.g. token durations like
+        ``auto``) pass through verbatim, as do all values when the schema
+        is unavailable.
+        """
+        param = props.get(key, {})
+        param_type = param.get("type") if isinstance(param, dict) else None
+        if not isinstance(value, str):
+            return value
+        if param_type == "integer":
+            try:
+                return int(value)
+            except ValueError:
+                return value
+        if param_type == "number":
+            try:
+                return float(value)
+            except ValueError:
+                return value
+        if param_type == "boolean":
+            lowered = value.strip().lower()
+            if lowered in {"true", "yes", "1", "on"}:
+                return True
+            if lowered in {"false", "no", "0", "off"}:
+                return False
+        return value
 
     def _normalize_result(self, result, media_type: str) -> list:
         if not result:

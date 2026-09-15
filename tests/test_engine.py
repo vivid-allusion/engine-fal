@@ -398,6 +398,69 @@ class TestEngineRun:
             assert error_events[0].total == 1
 
 
+class TestParamCoercion:
+    def _engine(self, tmp_path):
+        return Engine({"endpoint": "test/model", "media_type": "video"}, tmp_path)
+
+    def test_numeric_string_params_coerced_against_schema(self, tmp_path):
+        engine = self._engine(tmp_path)
+        engine._input_props_cache = {"duration": {"type": "integer"}}
+        payload = engine._build_fal_input(
+            {"duration": "5", "prompt_expansion_mode": "balanced"},
+            "prompt",
+            InputFile(path=Path("b.md"), prompt="prompt"),
+            "video",
+        )
+        assert payload["duration"] == 5
+        assert payload["prompt_expansion_mode"] == "balanced"
+
+    def test_token_values_pass_verbatim(self, tmp_path):
+        engine = self._engine(tmp_path)
+        engine._input_props_cache = {"duration": {"type": "integer"}}
+        payload = engine._build_fal_input(
+            {"duration": "auto"},
+            "prompt",
+            InputFile(path=Path("b.md"), prompt="prompt"),
+            "video",
+        )
+        assert payload["duration"] == "auto"
+
+    def test_boolean_string_coerced(self, tmp_path):
+        engine = self._engine(tmp_path)
+        engine._input_props_cache = {"enable_safety_checker": {"type": "boolean"}}
+        payload = engine._build_fal_input(
+            {"enable_safety_checker": "false"},
+            "prompt",
+            InputFile(path=Path("b.md"), prompt="prompt"),
+            "video",
+        )
+        assert payload["enable_safety_checker"] is False
+
+    def test_strings_pass_verbatim_without_schema(self, tmp_path):
+        engine = self._engine(tmp_path)
+        engine._input_props_cache = {}
+        payload = engine._build_fal_input(
+            {"duration": "5"},
+            "prompt",
+            InputFile(path=Path("b.md"), prompt="prompt"),
+            "video",
+        )
+        assert payload["duration"] == "5"
+
+    def test_schema_ref_allof_resolution(self, tmp_path):
+        engine = self._engine(tmp_path)
+        root = {"components": {"schemas": {"fps": {"type": "integer"}}}}
+        node = engine._resolve_schema_refs(
+            {"allOf": [{"$ref": "#/components/schemas/fps"}]}, root
+        )
+        assert node.get("type") == "integer"
+
+    def test_schema_fetch_best_effort_on_failure(self, tmp_path):
+        engine = self._engine(tmp_path)
+        with patch("urllib.request.urlopen", side_effect=OSError("offline")):
+            assert engine._input_props() == {}
+
+
 class TestImports:
     def test_init_exports_all_names(self):
         from engine_fal import (
