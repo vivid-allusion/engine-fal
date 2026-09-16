@@ -64,7 +64,7 @@ engine-fal/
 │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
 │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
 └── tests/
-    └── test_engine.py ← 35 unit tests
+    └── test_engine.py ← 41 unit tests
 ```
 
 ## Contract
