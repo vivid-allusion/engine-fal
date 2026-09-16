@@ -1,0 +1,28 @@
+# Seedance 2.5 — Image to Video
+# Animate a still into up to 30s of video with native audio.
+# Docs: https://fal.ai/models/bytedance/seedance-2.5/image-to-video
+platform: fal
+endpoint: bytedance/seedance-2.5/image-to-video
+media_type: video
+image_url_param: image_url
+duration_type: seconds
+duration_param_name: duration
+slots: ["end_image_url"]
+slot_scalar: ["end_image_url"]
+parameters:
+  resolution: "720p"
+  # Server default is "auto"; 5 keeps profile cost estimation deterministic.
+  duration: "5"
+  aspect_ratio: "auto"
+  generate_audio: true
+  bitrate_mode: "standard"
+pricing:
+  # Token-based billing: tokens = (height * width * duration * 24) / 1024,
+  # charged at $0.0214 per 1000 tokens for 480p and 720p.
+  # Approximate 16:9 rates: $0.2205/s (480p), $0.4730/s (720p), $1.164/s (1080p).
+  cost_per_second: 0.4730
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

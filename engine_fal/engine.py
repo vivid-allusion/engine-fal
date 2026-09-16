@@ -140,6 +140,7 @@ class Engine:
         fal_input = dict(params)
         fal_input.pop("prompt_prefix", None)
         fal_input.pop("prompt_suffix", None)
+        fal_input.pop("fps", None)
 
         if any(isinstance(value, str) for value in fal_input.values()):
             props = self._input_props()
@@ -148,7 +149,9 @@ class Engine:
                 for key, value in fal_input.items()
             }
 
-        ref_key = self._profile.get("reference_param", "image_url")
+        ref_key = self._profile.get("image_url_param") or self._profile.get(
+            "reference_param", "image_url"
+        )
         reference_multi = self._profile.get("reference_param_multi", False)
 
         fal_input["prompt"] = prompt
@@ -156,6 +159,12 @@ class Engine:
             fal_input[ref_key] = (
                 list(item.reference_urls) if reference_multi else item.reference_urls[0]
             )
+
+        slot_scalar = set(self._profile.get("slot_scalar", []))
+        for slot, urls in (item.references or {}).items():
+            if not urls:
+                continue
+            fal_input[slot] = urls[0] if slot in slot_scalar else list(urls)
 
         return fal_input
 

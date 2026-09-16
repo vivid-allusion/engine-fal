@@ -17,6 +17,7 @@ class TestDatatypes:
         assert f.prompt == "hello"
         assert f.reference_urls == []
         assert f.metadata == {}
+        assert f.references == {}
 
     def test_outputfile_defaults(self):
         o = OutputFile(source_path=Path("test.md"))
@@ -103,7 +104,7 @@ class TestEngineInitPurity:
 class TestEnginePreflight:
     def test_missing_endpoint_raises(self):
         engine = Engine({"media_type": "image"}, "/tmp/out")
-        with pytest.raises(EngineError, match="Missing 'endpoint'"):
+        with pytest.raises(EngineError, match="Missing or empty 'endpoint'"):
             engine.run([])
 
     @patch.dict("os.environ", {}, clear=True)
@@ -219,7 +220,8 @@ class TestEngineRun:
                     InputFile(path=Path(f"b{i}.md"), prompt="test")
                     for i in range(3)
                 ]
-                results = engine.run(md_files)
+                with patch("urllib.request.urlretrieve"):
+                    results = engine.run(md_files)
                 statuses = [r.status for r in results]
                 assert statuses.count("ok") == 2
                 assert statuses.count("error") == 1
@@ -322,8 +324,8 @@ class TestEngineRun:
                     ])
                     fal_input = mock_fal_client.subscribe.call_args[1]["arguments"]
                     assert fal_input["image_url"] == "https://ref.com/img.jpg"
-                    assert fal_input["duration"] == 5
-                    assert fal_input["fps"] == 24
+                    # fps is vehicle metadata, never a provider input
+                    assert "fps" not in fal_input
 
     def test_reference_param_from_profile(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
@@ -379,6 +381,105 @@ class TestEngineRun:
                         "https://ref.com/img1.jpg",
                         "https://ref.com/img2.jpg",
                     ]
+
+    def test_named_slots_and_image_url_param(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "bytedance/seedance-2.5/reference-to-video",
+                            "media_type": "video",
+                            "image_url_param": "video_urls",
+                            "reference_param": "image_urls",
+                            "reference_param_multi": True,
+                            "parameters": {"task": "editing"},
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="Edit @Video 1",
+                                reference_urls=["https://ref.com/clip.mp4"],
+                                references={
+                                    "image_urls": ["https://ref.com/plate.jpg"]
+                                },
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert arguments["video_urls"] == ["https://ref.com/clip.mp4"]
+                    assert arguments["image_urls"] == ["https://ref.com/plate.jpg"]
+                    assert arguments["task"] == "editing"
+
+    def test_fps_stripped_from_payload(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "test/model",
+                            "media_type": "video",
+                            "parameters": {"fps": 24, "duration": "5"},
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="test",
+                                metadata={"duration": "5", "fps": 24},
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert "fps" not in arguments
+                    assert arguments["duration"] == "5"
+
+    def test_slot_scalar_from_profile(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "bytedance/seedance-2.5/image-to-video",
+                            "media_type": "video",
+                            "image_url_param": "image_url",
+                            "slots": ["end_image_url"],
+                            "slot_scalar": ["end_image_url"],
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="test",
+                                reference_urls=["https://ref.com/first.jpg"],
+                                references={
+                                    "end_image_url": ["https://ref.com/last.jpg"]
+                                },
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert arguments["image_url"] == "https://ref.com/first.jpg"
+                    assert arguments["end_image_url"] == "https://ref.com/last.jpg"
 
     def test_error_emits_progress_event_with_current_total(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):

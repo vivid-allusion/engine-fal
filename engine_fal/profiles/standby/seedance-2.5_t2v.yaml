@@ -1,0 +1,29 @@
+# Seedance 2.5 — Text to Video
+# Native 30s single-shot generation from a text prompt, up to 720p, with audio.
+# Docs: https://fal.ai/models/bytedance/seedance-2.5/text-to-video
+# Do not attach image URLs to bullets for this profile: the endpoint takes
+# prompt only, and any reference URL would be sent as an unsupported input key.
+platform: fal
+endpoint: bytedance/seedance-2.5/text-to-video
+media_type: video
+duration_type: seconds
+duration_param_name: duration
+parameters:
+  resolution: "720p"
+  # Server default is "auto"; 5 keeps profile cost estimation deterministic.
+  duration: "5"
+  aspect_ratio: "auto"
+  generate_audio: true
+  bitrate_mode: "standard"
+pricing:
+  # Token-based billing: tokens = (height * width * duration * 24) / 1024,
+  # charged at $0.0214 per 1000 tokens for 480p and 720p.
+  # Approximate 16:9 rates: $0.2205/s (480p), $0.4730/s (720p), $1.164/s (1080p).
+  # Aspect ratio "auto" makes per-second cost unpredictable; set it explicitly
+  # for predictable billing.
+  cost_per_second: 0.4730
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

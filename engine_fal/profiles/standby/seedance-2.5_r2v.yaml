@@ -1,0 +1,35 @@
+# Seedance 2.5 — Reference to Video
+# Up to 50 multimodal references (images, video, audio); character/set/palette
+# consistency across a full 30s take.
+# Docs: https://fal.ai/models/bytedance/seedance-2.5/reference-to-video
+platform: fal
+endpoint: bytedance/seedance-2.5/reference-to-video
+media_type: video
+image_url_param: image_urls
+reference_param: image_urls
+reference_param_multi: true
+duration_type: seconds
+duration_param_name: duration
+slots: ["video_urls", "audio_urls"]
+parameters:
+  # "reference" | "editing" (modifies a reference video; forces duration and
+  # aspect_ratio to auto) | "extension" (continues a reference video).
+  task: "reference"
+  resolution: "720p"
+  # Server default is "auto"; 5 keeps profile cost estimation deterministic.
+  duration: "5"
+  aspect_ratio: "auto"
+  generate_audio: true
+  bitrate_mode: "standard"
+  # Advanced parameters (uncomment to use)
+  #seed: 42
+pricing:
+  # Token-based billing: tokens = (height * width * duration * 24) / 1024,
+  # charged at $0.0214 per 1000 tokens for 480p and 720p.
+  # Approximate 16:9 rates: $0.2205/s (480p), $0.4730/s (720p), $1.164/s (1080p).
+  cost_per_second: 0.4730
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

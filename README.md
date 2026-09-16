@@ -60,11 +60,11 @@ engine-fal/
 ├── requirements.txt   ← fal>=1.0
 ├── endpoints/
 │   ├── IMG-Models/    ← 5 image models (flux, ideogram, sdxl, recraft)
-│   ├── VID-Models/    ← 3 video models (mochi, ltx, minimax)
+│   ├── VID-Models/    ← 8 video models (mochi, ltx, minimax, h3-max-turbo, seedance-2.5)
 │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
 │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
 └── tests/
-    └── test_engine.py ← 20 unit tests
+    └── test_engine.py ← 35 unit tests
 ```
 
 ## Contract

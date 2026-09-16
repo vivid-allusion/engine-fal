@@ -9,6 +9,7 @@ class InputFile:
     prompt: str
     reference_urls: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
+    references: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass
