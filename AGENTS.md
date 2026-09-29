@@ -59,8 +59,9 @@ Vehicles find this Engine via `engine_loader.py`:
 | `engine_fal/metadata.py` | Zero-dependency identity constants (studiolot reads this) |
 | `engine_fal/__init__.py` | Re-exports Engine + all datatypes |
 | `engine_fal/endpoints/` | TOML model catalog (IMG/VID/TXT/Vision) |
-| `engine_fal/profiles/standby/` | Publishable YAML profiles |
+| `engine_fal/profiles/standby/IMG/` | Publishable YAML profiles by media category, mirroring the endpoint catalog |
 | `tests/test_engine.py` | Unit tests |
+| `tests/conftest.py` | Offline guard — stubs the live schema fetch so tests never call the fal models API |
 | `pyproject.toml` | Package metadata, pip-installable |
 | `requirements.txt` | Provider SDK + dependencies |
 
@@ -70,6 +71,32 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
 
 ### Session History
 
+- 2026-09-29 — Interface/behaviour parity with the gold engine (engine-replicate)
+  - `datatypes.py` — `InputFile` gained `references: dict[str, list[str]]`
+    (named secondary media slots); `OutputFile` gained `expected_path: Path | None`.
+  - `engine.py` — ported the gold behaviour: every error `OutputFile` now
+    carries the precomputed `expected_path`; error progress events carry
+    `api_payload`; transient failures retry with exponential backoff
+    (`retry_on_429`, `retry_base_delay`), fatal billing/auth errors abort the
+    batch, a circuit breaker (`circuit_breaker_max`) stops churn on sustained
+    rate limits; `delay_between_requests`; `📝 Markdown:` progress line; stream
+    outputs sniff their real extension from magic bytes; schema-driven scalar
+    coercion and media shaping (`integer`/`number`/`boolean`/array vs string)
+    from the endpoint's live openapi Input schema. The primary media key now
+    resolves `image_url_param` → `reference_param` → `image_url`, and named
+    `references` slots route to their own keys.
+  - `engine.py` — `_fetch_input_props()` reads the fal models API
+    (`GET /v1/models?endpoint_id=…&expand=openapi-3.0`), fully guarded: a failed
+    fetch degrades to pass-through params, never an error.
+  - `__init__.py` — `list_standby_profiles(media_type)` shelf selector (IMG/VID);
+    standby profiles moved into `profiles/standby/IMG/`.
+  - Tests ported from the gold suite (86 green): datatypes, expected_path,
+    stream sniffing, slot routing/schema coercion, retry/fatal/circuit breaker,
+    URL validation, shelf selector, and openapi parsing (offline via conftest).
+  - Known gap (out of this change): the endpoint TOML catalog still drifts from
+    the live fal schemas (undeclared server params, invented keys). A
+    schema-sync checker + catalog rebuild is required — see the engine-mgmt
+    mapping gate before regenerating TOMLs.
 - 2026-08-24 — Logs written as each file is saved: `ProgressEvent` gained `saved_path` + `api_payload` fields; `_save_results()` emits them on "💾 Saved" so vehicles can write per-file logs in real time (parity with engine-replicate).
 - 2026-08-24 — API payload for per-file run logs: `run()` now emits `📦 Payload: {fal_input}` via `_emit()` and attaches `metadata={"api_payload": fal_input}` to every successful `OutputFile` (parity with engine-replicate).
 - 2026-08-05 — Created AGENTS.md, .env.example, .gitignore

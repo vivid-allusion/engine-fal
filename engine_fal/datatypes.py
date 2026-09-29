@@ -9,6 +9,7 @@ class InputFile:
     prompt: str
     reference_urls: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
+    references: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -19,6 +20,7 @@ class OutputFile:
     error_msg: str = ""
     media_type: str = ""
     metadata: dict = field(default_factory=dict)
+    expected_path: Path | None = None
 
 
 @dataclass

@@ -52,20 +52,29 @@ Get a key at https://fal.ai/dashboard
 
 ```
 engine-fal/
-├── engine.py          ← Engine class wrapping fal SDK
-├── datatypes.py       ← InputFile, OutputFile, ProgressEvent, EngineError
-├── metadata.py        ← Zero-dependency identity constants
-├── __init__.py        ← Re-exports
-├── pyproject.toml     ← pip install definition
-├── requirements.txt   ← fal>=1.0
-├── endpoints/
-│   ├── IMG-Models/    ← 5 image models (flux, ideogram, sdxl, recraft)
-│   ├── VID-Models/    ← 3 video models (mochi, ltx, minimax)
-│   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
-│   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
+├── engine_fal/
+│   ├── engine.py       ← Engine class wrapping the fal SDK
+│   ├── datatypes.py    ← InputFile, OutputFile, ProgressEvent, EngineError
+│   ├── metadata.py     ← Zero-dependency identity constants
+│   ├── __init__.py     ← Re-exports + list_standby_profiles(media_type)
+│   ├── endpoints/
+│   │   ├── IMG-Models/    ← image model TOMLs (flux, ideogram, sdxl, recraft)
+│   │   ├── VID-Models/    ← video model TOMLs (mochi, ltx, minimax)
+│   │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
+│   │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
+│   └── profiles/standby/IMG/ ← publishable standby YAML profiles
+├── pyproject.toml      ← pip install definition
+├── requirements.txt    ← fal-client>=1.0
 └── tests/
-    └── test_engine.py ← 20 unit tests
+    ├── conftest.py     ← offline guard (no live schema fetch in tests)
+    └── test_engine.py  ← unit tests
 ```
+
+The engine mirrors the behaviour of the gold engine (`engine-replicate`):
+error results carry the destination filename they would have used, transient
+provider failures retry with backoff, billing/auth failures abort the batch,
+streamed outputs are saved under the extension their bytes claim, and scalar
+parameters are coerced against the endpoint's live openapi Input schema.
 
 ## Contract
 
