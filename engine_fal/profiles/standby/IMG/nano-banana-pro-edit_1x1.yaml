@@ -1,0 +1,17 @@
+# Nano Banana Pro Edit — 1:1 Square
+platform: fal
+endpoint: fal-ai/nano-banana-pro/edit
+media_type: image
+image_url_param: image_urls
+reference_param_multi: true
+parameters:
+  aspect_ratio: "1:1"
+  resolution: "1K"
+  num_images: 1
+pricing:
+  base_cost: 0.15
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

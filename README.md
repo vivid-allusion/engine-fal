@@ -58,7 +58,7 @@ engine-fal/
 │   ├── metadata.py     ← Zero-dependency identity constants
 │   ├── __init__.py     ← Re-exports + list_standby_profiles(media_type)
 │   ├── endpoints/
-│   │   ├── IMG-Models/    ← image model TOMLs (flux, ideogram, sdxl, recraft)
+│   │   ├── IMG-Models/    ← image model TOMLs (flux, ideogram, sdxl, recraft, nano-banana family)
 │   │   ├── VID-Models/    ← video model TOMLs (mochi, ltx, minimax, h3-max-turbo, seedance-2.5)
 │   │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
 │   │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)

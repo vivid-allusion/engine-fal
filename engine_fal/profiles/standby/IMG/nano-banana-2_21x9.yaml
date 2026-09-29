@@ -2,7 +2,7 @@
 platform: fal
 endpoint: fal-ai/nano-banana-2/edit
 media_type: image
-reference_param: image_urls
+image_url_param: image_urls
 reference_param_multi: true
 parameters:
   aspect_ratio: "21:9"

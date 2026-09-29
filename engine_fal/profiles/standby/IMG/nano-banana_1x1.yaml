@@ -1,0 +1,14 @@
+# Nano Banana — 1:1 Square
+platform: fal
+endpoint: fal-ai/nano-banana
+media_type: image
+parameters:
+  aspect_ratio: "1:1"
+  num_images: 1
+pricing:
+  base_cost: 0.039
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

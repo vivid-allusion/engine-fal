@@ -71,6 +71,19 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
 
 ### Session History
 
+- 2026-09-29 — Nano Banana family added to the IMG catalog
+  - Six endpoint TOMLs mirror the live fal OpenAPI schemas (verified with a
+    live schema diff, 0 drift): `nano-banana`, `nano-banana-edit`,
+    `nano-banana-2`, `nano-banana-2-edit`, `nano-banana-pro`,
+    `nano-banana-pro-edit`. fal splits text-to-image and image-to-image into
+    separate endpoints, so both are declared; the edit TOMLs carry
+    `image_url_param = "image_urls"` and — for nano-banana-2/edit — media
+    `slots` (`video_url`, `pdf_url`, `audio_url`) with `slot_scalar`.
+  - Pricing taken from fal's own model data (nano-banana $0.039, nano-banana-2
+    $0.08, nano-banana-pro $0.15 per image).
+  - 18 standby profiles added under `profiles/standby/IMG/` (1:1 / 16:9 / 9:16
+    per model); the existing `nano-banana-2_21x9.yaml` now points at the new
+    TOML and uses `image_url_param`.
 - 2026-09-29 — Interface/behaviour parity with the gold engine (engine-replicate)
   - `datatypes.py` — `InputFile` gained `references: dict[str, list[str]]`
     (named secondary media slots); `OutputFile` gained `expected_path: Path | None`.

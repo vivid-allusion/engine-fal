@@ -1,0 +1,81 @@
+id = "nano-banana"
+label = "Nano Banana"
+category = "IMG"
+platform = "fal"
+endpoint = "fal-ai/nano-banana"
+description = "Google's original Nano Banana text-to-image model on fal. Still available; consider Nano Banana 2 for better quality and more features."
+
+[pricing]
+base_cost = 0.039
+currency = "USD"
+note = "fal list price: $0.039 per image ($1.00 ≈ 25 runs)."
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "1:1"
+optional = true
+options = [
+  { value = "1:1",  label = "1:1 · Square" },
+  { value = "3:2",  label = "3:2 · Landscape" },
+  { value = "4:3",  label = "4:3 · Classic" },
+  { value = "5:4",  label = "5:4 · Landscape" },
+  { value = "16:9", label = "16:9 · Landscape · Standard" },
+  { value = "21:9", label = "21:9 · Ultrawide · Cinematic" },
+  { value = "2:3",  label = "2:3 · Portrait" },
+  { value = "3:4",  label = "3:4 · Portrait" },
+  { value = "4:5",  label = "4:5 · Portrait" },
+  { value = "9:16", label = "9:16 · Vertical" },
+]
+
+[params.num_images]
+label = "Number of Images"
+type = "integer"
+default = 1
+min = 1
+max = 4
+
+[params.output_format]
+label = "Output Format"
+type = "select"
+default = "png"
+optional = true
+options = [
+  { value = "png",  label = "PNG · Lossless" },
+  { value = "jpeg", label = "JPEG" },
+  { value = "webp", label = "WebP" },
+]
+
+[params.safety_tolerance]
+label = "Safety Tolerance"
+type = "select"
+default = "4"
+optional = true
+options = [
+  { value = "1", label = "1 · Strictest" },
+  { value = "2", label = "2" },
+  { value = "3", label = "3" },
+  { value = "4", label = "4 · Default" },
+  { value = "5", label = "5" },
+  { value = "6", label = "6 · Most permissive" },
+]
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+
+[params.sync_mode]
+label = "Sync Mode"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+
+[params.limit_generations]
+label = "Limit Generations"
+type = "boolean"
+default = true
+optional = true
+hidden = true
