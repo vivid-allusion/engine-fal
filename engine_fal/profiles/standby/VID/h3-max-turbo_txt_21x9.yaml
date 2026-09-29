@@ -1,0 +1,24 @@
+# H3 Max Turbo — 21:9 (text-to-video)
+platform: fal
+endpoint: minimax/h3-max-turbo/text-to-video
+media_type: video
+duration_type: seconds
+duration_param_name: duration
+parameters:
+  prompt_expansion_mode: "balanced"
+  duration: 5
+  resolution: "768P"
+  aspect_ratio: "21:9"
+  enable_safety_checker: true
+  # Advanced parameters (uncomment to use)
+  #seed: 42
+pricing:
+  # Standard rate: $0.025/s (480P), $0.04/s (768P), $0.08/s (1080P).
+  # Promotional launch rate through 2026-09-14 was 75% off:
+  # $0.00625/s (480P), $0.01/s (768P), $0.02/s (1080P).
+  cost_per_second: 0.04
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

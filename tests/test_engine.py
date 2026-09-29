@@ -337,6 +337,8 @@ class TestEngineRun:
                     fal_input = mock_fal_client.subscribe.call_args[1]["arguments"]
                     assert fal_input["image_url"] == "https://ref.com/img.jpg"
                     assert fal_input["duration"] == 5
+                    # fps is vehicle metadata, never a provider input
+                    assert "fps" not in fal_input
 
     def test_reference_param_from_profile(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
@@ -647,8 +649,117 @@ class TestBuildFalInput:
             },
         )
         payload = self._build(profile, item)
-        assert payload["reference_images"] == "https://x.com/i.jpg"
-        assert payload["reference_videos"] == "https://x.com/v.mp4"
+        assert payload["reference_images"] == ["https://x.com/i.jpg"]
+        assert payload["reference_videos"] == ["https://x.com/v.mp4"]
+
+    def test_slot_scalar_profile_key_forces_single_url(self):
+        profile = {"endpoint": "test/model", "slot_scalar": ["end_image_url"]}
+        item = InputFile(
+            path=Path("b.md"),
+            prompt="p",
+            references={"end_image_url": ["https://x.com/last.jpg"]},
+        )
+        payload = self._build(profile, item)
+        assert payload["end_image_url"] == "https://x.com/last.jpg"
+
+    def test_named_slots_and_image_url_param(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "bytedance/seedance-2.5/reference-to-video",
+                            "media_type": "video",
+                            "image_url_param": "video_urls",
+                            "reference_param": "image_urls",
+                            "reference_param_multi": True,
+                            "parameters": {"task": "editing"},
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="Edit @Video 1",
+                                reference_urls=["https://ref.com/clip.mp4"],
+                                references={
+                                    "image_urls": ["https://ref.com/plate.jpg"]
+                                },
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert arguments["video_urls"] == ["https://ref.com/clip.mp4"]
+                    assert arguments["image_urls"] == ["https://ref.com/plate.jpg"]
+                    assert arguments["task"] == "editing"
+
+    def test_fps_stripped_from_payload(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "test/model",
+                            "media_type": "video",
+                            "parameters": {"fps": 24, "duration": "5"},
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="test",
+                                metadata={"duration": "5", "fps": 24},
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert "fps" not in arguments
+                    assert arguments["duration"] == "5"
+
+    def test_slot_scalar_from_profile(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "video": {"url": "https://example.com/out.mp4"}
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve"):
+                    engine = Engine(
+                        {
+                            "endpoint": "bytedance/seedance-2.5/image-to-video",
+                            "media_type": "video",
+                            "image_url_param": "image_url",
+                            "slots": ["end_image_url"],
+                            "slot_scalar": ["end_image_url"],
+                        },
+                        tmp_path,
+                    )
+                    engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt="test",
+                                reference_urls=["https://ref.com/first.jpg"],
+                                references={
+                                    "end_image_url": ["https://ref.com/last.jpg"]
+                                },
+                            )
+                        ]
+                    )
+                    arguments = mock_fal_client.subscribe.call_args[1]["arguments"]
+                    assert arguments["image_url"] == "https://ref.com/first.jpg"
+                    assert arguments["end_image_url"] == "https://ref.com/last.jpg"
 
     def test_schema_string_param_gets_single_url(self):
         profile = {"endpoint": "test/model"}
@@ -729,7 +840,7 @@ class TestBuildFalInput:
         "aspect_ratio": {"type": "string"},
         "duration": {"type": "integer"},
         "resolution": {"type": "string"},
-        "fps": {"type": "integer"},
+        "num_inference_steps": {"type": "integer"},
         "draft": {"type": "boolean"},
     }
 
@@ -740,13 +851,13 @@ class TestBuildFalInput:
             "aspect_ratio": "16:9",
             "duration": "5",
             "resolution": "720p",
-            "fps": "24",
+            "num_inference_steps": "30",
             "draft": False,
             "prompt_upsampling": True,
         }
         payload = self._build(profile, item, params=params, schema=self.PVIDEO_SCHEMA)
         assert payload["duration"] == 5
-        assert payload["fps"] == 24
+        assert payload["num_inference_steps"] == 30
         assert payload["aspect_ratio"] == "16:9"
         assert payload["resolution"] == "720p"
         assert payload["draft"] is False
@@ -787,16 +898,21 @@ class TestBuildFalInput:
     }
 
     def test_allof_ref_param_coerced(self):
-        profile = {"endpoint": "test/model"}
+        engine = Engine({"endpoint": "test/model"}, "/tmp/out")
+        resolved = engine._resolve_schema_refs(
+            self.FPS_REF_SCHEMA["fps"], self.FPS_REF_SCHEMA
+        )
+        assert engine._coerce_param_value("fps", "24", {"fps": resolved}) == 24
         item = InputFile(path=Path("b.md"), prompt="p")
         payload = self._build(
-            profile,
+            {"endpoint": "test/model"},
             item,
-            params={"fps": "24", "duration": "5"},
+            params={"duration": "5"},
             schema=self.FPS_REF_SCHEMA,
         )
-        assert payload["fps"] == 24
         assert payload["duration"] == 5
+        # fps is vehicle metadata and is stripped before the provider call
+        assert "fps" not in payload
 
     def test_resolve_schema_refs_merges_ref_and_own_keys(self):
         engine = Engine({"endpoint": "test/model"}, "/tmp/out")
@@ -877,6 +993,13 @@ class TestListStandbyProfiles:
         imgs = list_standby_profiles("IMG")
         assert imgs
         assert all("IMG" in p.parts for p in imgs)
+
+    def test_vid_shelf_returns_only_video_yamls(self):
+        from engine_fal import list_standby_profiles
+
+        vids = list_standby_profiles("VID")
+        assert vids
+        assert all("VID" in p.parts for p in vids)
 
     def test_unknown_media_type_returns_empty(self):
         from engine_fal import list_standby_profiles

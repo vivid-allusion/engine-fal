@@ -59,10 +59,10 @@ engine-fal/
 │   ├── __init__.py     ← Re-exports + list_standby_profiles(media_type)
 │   ├── endpoints/
 │   │   ├── IMG-Models/    ← image model TOMLs (flux, ideogram, sdxl, recraft)
-│   │   ├── VID-Models/    ← video model TOMLs (mochi, ltx, minimax)
+│   │   ├── VID-Models/    ← video model TOMLs (mochi, ltx, minimax, h3-max-turbo, seedance-2.5)
 │   │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
 │   │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
-│   └── profiles/standby/IMG/ ← publishable standby YAML profiles
+│   └── profiles/standby/{IMG,VID}/ ← publishable standby YAML profiles by media type
 ├── pyproject.toml      ← pip install definition
 ├── requirements.txt    ← fal-client>=1.0
 └── tests/
@@ -75,6 +75,9 @@ error results carry the destination filename they would have used, transient
 provider failures retry with backoff, billing/auth failures abort the batch,
 streamed outputs are saved under the extension their bytes claim, and scalar
 parameters are coerced against the endpoint's live openapi Input schema.
+Named reference slots (Seedance/H3) route to their own keys, `slot_scalar`
+marks string-valued slots, and the vehicle-only `fps` key never reaches the
+provider.
 
 ## Contract
 

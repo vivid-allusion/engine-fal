@@ -81,10 +81,12 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
     batch, a circuit breaker (`circuit_breaker_max`) stops churn on sustained
     rate limits; `delay_between_requests`; `📝 Markdown:` progress line; stream
     outputs sniff their real extension from magic bytes; schema-driven scalar
-    coercion and media shaping (`integer`/`number`/`boolean`/array vs string)
-    from the endpoint's live openapi Input schema. The primary media key now
-    resolves `image_url_param` → `reference_param` → `image_url`, and named
-    `references` slots route to their own keys.
+    coercion and media shaping (`integer`/`number`/`boolean`, array vs string)
+    from the endpoint's live openapi Input schema. The primary media key
+    resolves `image_url_param` → `reference_param` → `image_url`; named
+    `references` slots route to their own keys as lists, `slot_scalar` (or a
+    string schema) makes a slot a single URL, and the vehicle-only `fps` key is
+    stripped from the provider payload.
   - `engine.py` — `_fetch_input_props()` reads the fal models API
     (`GET /v1/models?endpoint_id=…&expand=openapi-3.0`), fully guarded: a failed
     fetch degrades to pass-through params, never an error.
@@ -97,6 +99,9 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
     the live fal schemas (undeclared server params, invented keys). A
     schema-sync checker + catalog rebuild is required — see the engine-mgmt
     mapping gate before regenerating TOMLs.
+- 2026-09-15 — H3 Max Turbo catalog: added `endpoints/VID-Models/h3-max-turbo-txt.toml` and `h3-max-turbo-img.toml` for `minimax/h3-max-turbo/text-to-video` and `.../image-to-video`, plus standby profiles `profiles/standby/h3-max-turbo_txt_21x9.yaml` and `h3-max-turbo-img_i2v.yaml`. TOML params verified against the live fal OpenAPI queue schema (zero drift).
+- 2026-09-15 — Scalar param coercion: wizard-composed profiles serialize numeric params as strings (`duration: "5"`), which fal rejects with 422 against integer fields. `_build_fal_input()` now coerces string params against the endpoint's live OpenAPI schema (`_input_props()` fetches the public queue schema by `endpoint_id`, resolves `$ref`/`allOf`, caches per instance; best-effort — values pass verbatim when the schema is unavailable). Non-convertible tokens (`auto`) pass verbatim.
+- 2026-09-15 — Seedance 2.5 catalog + slot-aware payloads: three endpoint TOMLs (`seedance-2.5-img`, `-txt`, `-ref`) and three standby profiles (`seedance-2.5_i2v`, `_t2v`, `_r2v`) mirror the live fal schemas (params, enums, defaults verified against the endpoint openapi). `InputFile` gained an additive `references: dict[str, list[str]]` field; `_build_fal_input()` now resolves the primary key from `image_url_param` (falling back to `reference_param`, then `image_url`), routes named slots to their own keys as lists by default, honors `slot_scalar` for string-valued slots (e.g. `end_image_url`), and strips the vehicle-only `fps` key from the provider payload. Engine tests 41 green.
 - 2026-08-24 — Logs written as each file is saved: `ProgressEvent` gained `saved_path` + `api_payload` fields; `_save_results()` emits them on "💾 Saved" so vehicles can write per-file logs in real time (parity with engine-replicate).
 - 2026-08-24 — API payload for per-file run logs: `run()` now emits `📦 Payload: {fal_input}` via `_emit()` and attaches `metadata={"api_payload": fal_input}` to every successful `OutputFile` (parity with engine-replicate).
 - 2026-08-05 — Created AGENTS.md, .env.example, .gitignore

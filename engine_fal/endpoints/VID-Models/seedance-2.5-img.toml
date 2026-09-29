@@ -1,0 +1,97 @@
+id = "seedance-2.5-img"
+label = "Seedance 2.5 · Image to Video"
+category = "VID"
+platform = "fal"
+endpoint = "bytedance/seedance-2.5/image-to-video"
+description = "Dreamina Seedance 2.5 image-to-video — animates a single start frame into up to 30 seconds of native 720p video with synchronized audio in one pass. Optional end frame controls where the clip concludes; audio and visuals share one latent space, so lip sync and impacts stay coherent."
+
+[pricing]
+cost_per_second = 0.4730
+currency = "USD"
+note = "Token-based billing: tokens = (height * width * duration * 24) / 1024, charged at $0.0214 per 1000 tokens for 480p and 720p ($0.0234 for 1080p). Approximate 16:9 rates: $0.2205/s (480p), $0.4730/s (720p), $1.164/s (1080p)."
+
+[general]
+image_url_param = "image_url"
+duration_type = "seconds"
+duration_param_name = "duration"
+slots = ["end_image_url"]
+slot_scalar = ["end_image_url"]
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "720p"
+optional = true
+options = [
+  { value = "480p",  label = "480p · Fastest" },
+  { value = "720p",  label = "720p · Standard" },
+  { value = "1080p", label = "1080p · High quality" },
+]
+
+# Server default is "auto"; 5 keeps profile cost estimation deterministic.
+[params.duration]
+label = "Duration"
+type = "select"
+default = "5"
+options = [
+  { value = "auto", label = "auto · Model decides" },
+  { value = "4",  label = "4s" },
+  { value = "5",  label = "5s" },
+  { value = "6",  label = "6s" },
+  { value = "7",  label = "7s" },
+  { value = "8",  label = "8s" },
+  { value = "9",  label = "9s" },
+  { value = "10", label = "10s" },
+  { value = "11", label = "11s" },
+  { value = "12", label = "12s" },
+  { value = "13", label = "13s" },
+  { value = "14", label = "14s" },
+  { value = "15", label = "15s" },
+  { value = "16", label = "16s" },
+  { value = "17", label = "17s" },
+  { value = "18", label = "18s" },
+  { value = "19", label = "19s" },
+  { value = "20", label = "20s" },
+  { value = "21", label = "21s" },
+  { value = "22", label = "22s" },
+  { value = "23", label = "23s" },
+  { value = "24", label = "24s" },
+  { value = "25", label = "25s" },
+  { value = "26", label = "26s" },
+  { value = "27", label = "27s" },
+  { value = "28", label = "28s" },
+  { value = "29", label = "29s" },
+  { value = "30", label = "30s · Max" },
+]
+
+# Server accepts a free-form string here (default "auto", output follows the
+# input image). Kept as text to mirror the live schema rather than inventing
+# an enum the endpoint does not declare.
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "text"
+default = "auto"
+optional = true
+
+[params.generate_audio]
+label = "Generate Audio"
+type = "boolean"
+default = true
+optional = true
+
+[params.bitrate_mode]
+label = "Bitrate Mode"
+type = "select"
+default = "standard"
+optional = true
+options = [
+  { value = "standard", label = "Standard · Default bitrate" },
+  { value = "high",     label = "High · Larger file, higher quality" },
+]
+
+[params.end_user_id]
+label = "End User ID"
+type = "text"
+default = ""
+optional = true
+hidden = true

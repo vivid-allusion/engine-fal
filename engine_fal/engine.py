@@ -294,6 +294,8 @@ class Engine:
         fal_input = {k: self._coerce_param_value(k, v, props) for k, v in params.items()}
         fal_input.pop("prompt_prefix", None)
         fal_input.pop("prompt_suffix", None)
+        # fps is vehicle metadata (frame rate), never a provider input.
+        fal_input.pop("fps", None)
 
         fal_input["prompt"] = prompt
         ref_key = self._reference_key()
@@ -302,9 +304,12 @@ class Engine:
                 fal_input[ref_key] = list(item.reference_urls)
             else:
                 fal_input[ref_key] = self._coerce_media_value(ref_key, item.reference_urls)
+
+        slot_scalar = set(self._profile.get("slot_scalar", []) or [])
         for slot, urls in item.references.items():
-            if urls or slot in self._required_slots():
-                fal_input[slot] = self._coerce_media_value(slot, urls)
+            if not urls and slot not in self._required_slots():
+                continue
+            fal_input[slot] = self._shape_slot_value(slot, urls, slot_scalar)
 
         duration = item.metadata.get("duration")
         if duration is not None:
@@ -312,6 +317,24 @@ class Engine:
             fal_input[key] = self._coerce_param_value(key, duration, props)
 
         return fal_input
+
+    def _shape_slot_value(self, key: str, urls: list[str], slot_scalar: set[str]):
+        """Shape a named secondary-media slot.
+
+        String-valued slots (``slot_scalar`` in the profile, or a schema that
+        says ``string``) receive a single URL; every other named slot is an
+        array and receives the full list. Falls back to a list when neither the
+        profile nor the live schema says otherwise.
+        """
+        if not urls:
+            return []
+        if key in slot_scalar:
+            return urls[0]
+        param = self._input_props().get(key, {})
+        param_type = param.get("type") if isinstance(param, dict) else None
+        if param_type == "string":
+            return urls[0]
+        return list(urls)
 
     def _reference_key(self) -> str:
         """Primary input key: profile's image_url_param, else reference_param,
