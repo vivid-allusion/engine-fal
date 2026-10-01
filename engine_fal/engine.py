@@ -294,7 +294,7 @@ class Engine:
         fal_input = {k: self._coerce_param_value(k, v, props) for k, v in params.items()}
         fal_input.pop("prompt_prefix", None)
         fal_input.pop("prompt_suffix", None)
-        # fps is vehicle metadata (frame rate), never a provider input.
+        # fps is generator metadata (frame rate), never a provider input.
         fal_input.pop("fps", None)
 
         fal_input["prompt"] = prompt

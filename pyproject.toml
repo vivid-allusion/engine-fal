@@ -1,7 +1,7 @@
 [project]
 name = "engine-fal"
 version = "0.1.0"
-description = "Engine wrapper for the Fal.ai API. Uniform interface that studiolot Vehicles call instead of importing the Fal SDK directly."
+description = "Engine wrapper for the Fal.ai API. Uniform interface that studiolot Generators call instead of importing the Fal SDK directly."
 requires-python = ">=3.10"
 dependencies = [
     "fal-client>=1.0",

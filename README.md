@@ -1,8 +1,8 @@
 # engine-fal — Fal.ai Engine for studiolot
 
 Engine wrapping the [Fal.ai](https://fal.ai) API behind studiolot's uniform
-Engine interface. Vehicles (studio applications like Frame Composer and
-Motion Conductor) call this Engine instead of importing the Fal SDK directly.
+Engine interface. Generators (studio applications like Image Generator and
+Video Generator) call this Engine instead of importing the Fal SDK directly.
 
 ## Quick Start
 
@@ -76,7 +76,7 @@ provider failures retry with backoff, billing/auth failures abort the batch,
 streamed outputs are saved under the extension their bytes claim, and scalar
 parameters are coerced against the endpoint's live openapi Input schema.
 Named reference slots (Seedance/H3) route to their own keys, `slot_scalar`
-marks string-valued slots, and the vehicle-only `fps` key never reaches the
+marks string-valued slots, and the generator-only `fps` key never reaches the
 provider.
 
 ## Contract

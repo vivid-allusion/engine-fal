@@ -11,8 +11,8 @@ def list_standby_profiles(media_type: str | None = None) -> list[Path]:
 
     Standby profiles live in category subdirectories mirroring the endpoint
     catalog: ``profiles/standby/IMG/`` and ``profiles/standby/VID/``. The
-    loading Vehicle declares its media type (Frame Composer → IMG, Motion
-    Conductor → VID) and the engine seeds only the matching shelf.
+    loading Generator declares its media type (Image Generator → IMG,
+    Video Generator → VID) and the engine seeds only the matching shelf.
 
     Args:
         media_type: ``'IMG'`` or ``'VID'`` (case-insensitive). ``None``

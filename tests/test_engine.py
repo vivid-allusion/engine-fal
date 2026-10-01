@@ -337,7 +337,7 @@ class TestEngineRun:
                     fal_input = mock_fal_client.subscribe.call_args[1]["arguments"]
                     assert fal_input["image_url"] == "https://ref.com/img.jpg"
                     assert fal_input["duration"] == 5
-                    # fps is vehicle metadata, never a provider input
+                    # fps is generator metadata, never a provider input
                     assert "fps" not in fal_input
 
     def test_reference_param_from_profile(self, tmp_path):
@@ -911,7 +911,7 @@ class TestBuildFalInput:
             schema=self.FPS_REF_SCHEMA,
         )
         assert payload["duration"] == 5
-        # fps is vehicle metadata and is stripped before the provider call
+        # fps is generator metadata and is stripped before the provider call
         assert "fps" not in payload
 
     def test_resolve_schema_refs_merges_ref_and_own_keys(self):

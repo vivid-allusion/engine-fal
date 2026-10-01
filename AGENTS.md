@@ -1,15 +1,15 @@
 ## Architecture: Engine SDK Wrapper
 
 This repo is an **Engine** in the studiolot ecosystem. It wraps the
-**Fal.ai** API and exposes a uniform interface that Vehicles call.
+**Fal.ai** API and exposes a uniform interface that Generators call.
 
 ### The layers
 
 ```
-studiolot (TUI) → Vehicle (script) → **Fal.ai Engine** → Provider API
+studiolot (TUI) → Generator (script) → **Fal.ai Engine** → Provider API
 ```
 
-Vehicles like Frame Composer and Motion Conductor are SDK-agnostic. They
+Generators like Image Generator and Video Generator are SDK-agnostic. They
 discover this Engine, load it via `engine_loader.py`, and call
 `engine.run(inputs)`. This Engine handles all **Fal.ai**-specific logic.
 
@@ -19,7 +19,7 @@ discover this Engine, load it via `engine_loader.py`, and call
   constructor. It only stores: profile dict, output_dir, api_key,
   on_progress callback.
 - **`Engine.run(inputs: list[InputFile]) -> list[OutputFile]`** is the ONLY
-  entry point Vehicles call. Returns ALL results — success and failure —
+  entry point Generators call. Returns ALL results — success and failure —
   as OutputFile objects. Never raises for per-Markdown-file failures.
 - **`EngineError`** is for unrecoverable pre-flight failures only: missing
   API key, invalid profile, provider auth rejection.
@@ -31,7 +31,7 @@ discover this Engine, load it via `engine_loader.py`, and call
 - **`endpoints/`** TOMLs are the canonical model catalog. One file per model,
   defining valid parameter ranges.
 - **`profiles/standby/`** contains publishable YAML profiles. When installed,
-  these are seeded into Vehicle repos' `USER-FILES/02.STANDBY/`.
+  these are seeded into Generator repos' `USER-FILES/02.STANDBY/`.
 
 ### Provider details
 
@@ -44,7 +44,7 @@ discover this Engine, load it via `engine_loader.py`, and call
 
 ### Engine discovery
 
-Vehicles find this Engine via `engine_loader.py`:
+Generators find this Engine via `engine_loader.py`:
 - Repo directory: `engine-fal` 
 - Python package: `engine_fal`
 - `engine_loader.py` handles the hyphen→underscore mapping
@@ -98,7 +98,7 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
     from the endpoint's live openapi Input schema. The primary media key
     resolves `image_url_param` → `reference_param` → `image_url`; named
     `references` slots route to their own keys as lists, `slot_scalar` (or a
-    string schema) makes a slot a single URL, and the vehicle-only `fps` key is
+    string schema) makes a slot a single URL, and the generator-only `fps` key is
     stripped from the provider payload.
   - `engine.py` — `_fetch_input_props()` reads the fal models API
     (`GET /v1/models?endpoint_id=…&expand=openapi-3.0`), fully guarded: a failed
@@ -114,7 +114,7 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
     mapping gate before regenerating TOMLs.
 - 2026-09-15 — H3 Max Turbo catalog: added `endpoints/VID-Models/h3-max-turbo-txt.toml` and `h3-max-turbo-img.toml` for `minimax/h3-max-turbo/text-to-video` and `.../image-to-video`, plus standby profiles `profiles/standby/h3-max-turbo_txt_21x9.yaml` and `h3-max-turbo-img_i2v.yaml`. TOML params verified against the live fal OpenAPI queue schema (zero drift).
 - 2026-09-15 — Scalar param coercion: wizard-composed profiles serialize numeric params as strings (`duration: "5"`), which fal rejects with 422 against integer fields. `_build_fal_input()` now coerces string params against the endpoint's live OpenAPI schema (`_input_props()` fetches the public queue schema by `endpoint_id`, resolves `$ref`/`allOf`, caches per instance; best-effort — values pass verbatim when the schema is unavailable). Non-convertible tokens (`auto`) pass verbatim.
-- 2026-09-15 — Seedance 2.5 catalog + slot-aware payloads: three endpoint TOMLs (`seedance-2.5-img`, `-txt`, `-ref`) and three standby profiles (`seedance-2.5_i2v`, `_t2v`, `_r2v`) mirror the live fal schemas (params, enums, defaults verified against the endpoint openapi). `InputFile` gained an additive `references: dict[str, list[str]]` field; `_build_fal_input()` now resolves the primary key from `image_url_param` (falling back to `reference_param`, then `image_url`), routes named slots to their own keys as lists by default, honors `slot_scalar` for string-valued slots (e.g. `end_image_url`), and strips the vehicle-only `fps` key from the provider payload. Engine tests 41 green.
-- 2026-08-24 — Logs written as each file is saved: `ProgressEvent` gained `saved_path` + `api_payload` fields; `_save_results()` emits them on "💾 Saved" so vehicles can write per-file logs in real time (parity with engine-replicate).
+- 2026-09-15 — Seedance 2.5 catalog + slot-aware payloads: three endpoint TOMLs (`seedance-2.5-img`, `-txt`, `-ref`) and three standby profiles (`seedance-2.5_i2v`, `_t2v`, `_r2v`) mirror the live fal schemas (params, enums, defaults verified against the endpoint openapi). `InputFile` gained an additive `references: dict[str, list[str]]` field; `_build_fal_input()` now resolves the primary key from `image_url_param` (falling back to `reference_param`, then `image_url`), routes named slots to their own keys as lists by default, honors `slot_scalar` for string-valued slots (e.g. `end_image_url`), and strips the generator-only `fps` key from the provider payload. Engine tests 41 green.
+- 2026-08-24 — Logs written as each file is saved: `ProgressEvent` gained `saved_path` + `api_payload` fields; `_save_results()` emits them on "💾 Saved" so generators can write per-file logs in real time (parity with engine-replicate).
 - 2026-08-24 — API payload for per-file run logs: `run()` now emits `📦 Payload: {fal_input}` via `_emit()` and attaches `metadata={"api_payload": fal_input}` to every successful `OutputFile` (parity with engine-replicate).
 - 2026-08-05 — Created AGENTS.md, .env.example, .gitignore
