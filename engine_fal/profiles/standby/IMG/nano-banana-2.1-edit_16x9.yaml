@@ -1,0 +1,17 @@
+# Nano Banana 2.1 Edit — 16:9 Landscape
+platform: fal
+endpoint: fal-ai/nano-banana-2.1/edit
+media_type: image
+image_url_param: image_urls
+reference_param_multi: true
+parameters:
+  aspect_ratio: "16:9"
+  resolution: "1K"
+  num_images: 1
+pricing:
+  base_cost: 0.04
+  currency: USD
+
+# Prompt modifications (uncomment to use)
+#prompt_prefix: ''
+#prompt_suffix: ''

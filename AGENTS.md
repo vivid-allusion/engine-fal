@@ -71,6 +71,17 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
 
 ### Session History
 
+- 2026-10-10 — Nano Banana 2.1 catalog added to the IMG shelf
+  - Two endpoint TOMLs mirror the live fal OpenAPI schemas (verified, 0 drift):
+    `nano-banana-2.1` and `nano-banana-2.1/edit`. Both are token-billed — text
+    and thinking $1.764/1M in, $8.823/1M out; image $1.764/1M in, $35.294/1M
+    out. fal's tests put a typical 1K image at ≈ $0.04 (16:9: $0.0396 at 1K,
+    $0.0593 at 2K, $0.1335 at 4K; a reference edit adds ≈ $0.002).
+  - Resolution is 1K/2K/4K (0.5K is dropped from v2) and `thinking_level` lists
+    `medium` (the live default). The edit endpoint carries `image_url_param =
+    "image_urls"` and `slots` for `video_url`/`pdf_url` (no audio URL).
+  - Seven standby profiles added under `profiles/standby/IMG/` (1:1 / 16:9 /
+    9:16 per endpoint plus the 21:9 reframe).
 - 2026-09-29 — Nano Banana family added to the IMG catalog
   - Six endpoint TOMLs mirror the live fal OpenAPI schemas (verified with a
     live schema diff, 0 drift): `nano-banana`, `nano-banana-edit`,
