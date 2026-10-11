@@ -548,14 +548,24 @@ class Engine:
                 ext = self._infer_extension(item, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
                 dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
-                urllib.request.urlretrieve(item, dest)
+                temp = dest_dir / f".{dest.name}.part"
+                try:
+                    urllib.request.urlretrieve(item, temp)
+                except Exception:
+                    temp.unlink(missing_ok=True)
+                    raise
+                # Stage → announce → reveal: the Generator stamps the staged
+                # file inside this callback before the rename below, so the
+                # final name never appears unstamped (ProgressEvent.final_path).
                 self._emit(
                     f"{prefix} 💾 Saved: {dest.name}",
                     current=current,
                     total=total,
-                    saved_path=dest,
+                    saved_path=temp,
                     api_payload=api_payload,
+                    final_path=dest,
                 )
+                temp.replace(dest)
                 saved.append(dest)
             elif hasattr(item, "read"):
                 self._emit(f"{prefix} ⬇️  Saving file stream...")
@@ -563,15 +573,23 @@ class Engine:
                 ext = self._sniff_extension(data, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
                 dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
-                with open(dest, "wb") as f:
-                    f.write(data)
+                temp = dest_dir / f".{dest.name}.part"
+                try:
+                    with open(temp, "wb") as f:
+                        f.write(data)
+                except Exception:
+                    temp.unlink(missing_ok=True)
+                    raise
+                # Stage → announce → reveal (ProgressEvent.final_path).
                 self._emit(
                     f"{prefix} 💾 Saved: {dest.name}",
                     current=current,
                     total=total,
-                    saved_path=dest,
+                    saved_path=temp,
                     api_payload=api_payload,
+                    final_path=dest,
                 )
+                temp.replace(dest)
                 saved.append(dest)
         return saved
 
@@ -622,6 +640,7 @@ class Engine:
         total: int = 0,
         saved_path: Path | None = None,
         api_payload: dict | None = None,
+        final_path: Path | None = None,
     ):
         if self._on_progress:
             self._on_progress(
@@ -632,5 +651,6 @@ class Engine:
                     total=total,
                     saved_path=saved_path,
                     api_payload=api_payload,
+                    final_path=final_path,
                 )
             )

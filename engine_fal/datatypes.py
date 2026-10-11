@@ -31,6 +31,12 @@ class ProgressEvent:
     total: int = 0
     saved_path: Path | None = None
     api_payload: dict | None = None
+    # ADDITIVE field (appended last — positional order safe): the file's real
+    # destination while `saved_path` stages it as a hidden `.<name>.part`. The
+    # Generator stamps `saved_path` inside the progress callback; the Engine
+    # renames the staged file to `final_path` only after that callback
+    # returns, so the final name never appears unstamped.
+    final_path: Path | None = None
 
 
 class EngineError(Exception):

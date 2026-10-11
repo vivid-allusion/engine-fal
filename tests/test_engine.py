@@ -11,6 +11,12 @@ from engine_fal import Engine, EngineError, InputFile, OutputFile, ProgressEvent
 import engine_fal.metadata as meta  # noqa: E402
 
 
+def _write_temp(url, filename):
+    """urlretrieve stand-in that really creates the staged file."""
+    Path(filename).write_bytes(b"img-bytes")
+    return (None, None)
+
+
 class TestDatatypes:
     def test_inputfile_defaults(self):
         f = InputFile(path=Path("test.md"), prompt="hello")
@@ -47,6 +53,7 @@ class TestDatatypes:
         assert e.level == "info"
         assert e.current == 0
         assert e.total == 0
+        assert e.final_path is None
 
     def test_progress_event_with_progress(self):
         e = ProgressEvent(message="done", current=3, total=5)
@@ -216,7 +223,7 @@ class TestEngineRun:
                 {"images": [{"url": "https://a.com/ok2.png"}]},
             ]
             with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
-                with patch("urllib.request.urlretrieve"):
+                with patch("urllib.request.urlretrieve", side_effect=_write_temp):
                     engine = Engine(
                         {"endpoint": "test/model", "media_type": "image"},
                         tmp_path,
@@ -238,7 +245,7 @@ class TestEngineRun:
             }
             with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
                 with patch("urllib.request.urlretrieve") as mock_retrieve:
-                    mock_retrieve.return_value = (None, None)
+                    mock_retrieve.side_effect = _write_temp
                     engine = Engine(
                         {"endpoint": "test/model", "media_type": "image"},
                         tmp_path,
@@ -249,6 +256,7 @@ class TestEngineRun:
                     assert len(results) == 1
                     assert results[0].status == "ok"
                     assert results[0].path is not None
+                    assert results[0].path.exists()
                     mock_retrieve.assert_called_once()
 
     def test_save_results_mirrors_relative_dir(self, tmp_path):
@@ -259,7 +267,7 @@ class TestEngineRun:
             }
             with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
                 with patch("urllib.request.urlretrieve") as mock_retrieve:
-                    mock_retrieve.return_value = (None, None)
+                    mock_retrieve.side_effect = _write_temp
                     engine = Engine(
                         {"endpoint": "test/model", "media_type": "image"},
                         tmp_path,
@@ -278,6 +286,43 @@ class TestEngineRun:
                     assert results[0].path is not None
                     assert results[0].path.parent == tmp_path / "scene1" / "nested"
 
+    def test_save_stages_hidden_then_reveals_after_the_event(self, tmp_path):
+        observed: dict[str, object] = {}
+
+        def on_event(event):
+            if event.saved_path is None:
+                return
+            observed["temp_name"] = event.saved_path.name
+            observed["temp_exists"] = event.saved_path.exists()
+            observed["temp_bytes"] = event.saved_path.read_bytes()
+            observed["final_visible"] = event.final_path.exists()
+
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.return_value = {
+                "images": [{"url": "https://example.com/img.png"}]
+            }
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve") as mock_retrieve:
+                    mock_retrieve.side_effect = _write_temp
+                    engine = Engine(
+                        {"endpoint": "test/model", "media_type": "image"},
+                        tmp_path,
+                    )
+                    engine._on_progress = on_event
+                    results = engine.run(
+                        [InputFile(path=Path("b.md"), prompt="test")]
+                    )
+
+        dest = results[0].path
+        assert observed["temp_name"] == f".{dest.name}.part"
+        assert observed["temp_exists"] is True
+        assert observed["temp_bytes"] == b"img-bytes"
+        assert observed["final_visible"] is False
+        assert dest.exists()
+        assert dest.read_bytes() == b"img-bytes"
+        assert list(tmp_path.glob(".*.part")) == []
+
     def test_video_result_normalization(self, tmp_path):
         with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
             mock_fal_client = MagicMock()
@@ -286,7 +331,7 @@ class TestEngineRun:
             }
             with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
                 with patch("urllib.request.urlretrieve") as mock_retrieve:
-                    mock_retrieve.return_value = (None, None)
+                    mock_retrieve.side_effect = _write_temp
                     engine = Engine(
                         {"endpoint": "test/model", "media_type": "video"},
                         tmp_path,
@@ -1079,7 +1124,7 @@ class TestRetry:
                 {"images": [{"url": "https://example.com/out.png"}]},
             ]
             with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
-                with patch("urllib.request.urlretrieve"):
+                with patch("urllib.request.urlretrieve", side_effect=_write_temp):
                     engine = Engine(
                         {
                             "endpoint": "test/model",
