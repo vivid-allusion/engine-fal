@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -12,6 +13,21 @@ from typing import Any
 from .datatypes import EngineError, InputFile, OutputFile, ProgressEvent
 
 _MODELS_API = "https://api.fal.ai/v1/models"
+
+_EMBEDDED_TIMESTAMP_RE = re.compile(r"(?<![0-9])[0-9]{6}_[0-9]{6}(?![0-9])")
+
+
+def _output_stem(stem: str, ts: str) -> str:
+    """Name the output file after its source stem and the generation timestamp.
+
+    When the stem already embeds a ``YYMMDD_HHMMSS`` timestamp, the first
+    occurrence is replaced in place with ``ts`` — re-running the same bullet
+    keeps one date in the name instead of stacking a second one. Stems
+    without an embedded timestamp keep the historical ``{ts}-{stem}``
+    prepend.
+    """
+    replaced, count = _EMBEDDED_TIMESTAMP_RE.subn(ts, stem, count=1)
+    return replaced if count else f"{ts}-{stem}"
 
 
 class Engine:
@@ -59,7 +75,7 @@ class Engine:
             dest_dir = self._output_dir / rel_dir if rel_dir else self._output_dir
             ts = datetime.now().strftime("%y%m%d_%H%M%S")
             ext = self._default_extension(media_type)
-            expected = dest_dir / f"{ts}-{stem}-{idx}{ext}"
+            expected = dest_dir / f"{_output_stem(stem, ts)}-{idx}{ext}"
 
             delay = float(self._profile.get("delay_between_requests", 0.0))
             if idx > 0 and delay > 0:
@@ -541,13 +557,14 @@ class Engine:
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         ts = datetime.now().strftime("%y%m%d_%H%M%S")
+        named_stem = _output_stem(stem, ts)
         saved = []
         for i, item in enumerate(raw_output):
             if isinstance(item, str):
                 self._emit(f"{prefix} ⬇️  Downloading...")
                 ext = self._infer_extension(item, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{named_stem}-{idx}{suffix}{ext}"
                 temp = dest_dir / f".{dest.name}.part"
                 try:
                     urllib.request.urlretrieve(item, temp)
@@ -572,7 +589,7 @@ class Engine:
                 data = item.read()
                 ext = self._sniff_extension(data, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{named_stem}-{idx}{suffix}{ext}"
                 temp = dest_dir / f".{dest.name}.part"
                 try:
                     with open(temp, "wb") as f:

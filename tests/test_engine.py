@@ -1205,6 +1205,117 @@ class TestCircuitBreakerAndFatalAbort:
                 assert mock_fal_client.subscribe.call_count == 1
 
 
+class TestOutputNaming:
+    """An embedded timestamp in the stem is replaced, never double-dated.
+
+    A bullet reused across runs (its filename already carries
+    ``YYMMDD_HHMMSS``) keeps one date in the output name; stems without one
+    keep the historical ``{ts}-{stem}`` prepend.
+    """
+
+    STEM = "0099_261014_125811-81_rw-80-1-0"
+    TS = "261015_150435"
+    NAMED = "0099_261015_150435-81_rw-80-1-0"
+
+    def _run_pinned(self, tmp_path, source_name: str, output=None, error: str | None = None):
+        """Run one bullet with ``datetime.now()`` pinned to TS."""
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            if error:
+                mock_fal_client.subscribe.side_effect = RuntimeError(error)
+            else:
+                mock_fal_client.subscribe.return_value = output
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("engine_fal.engine.datetime") as mock_dt:
+                    mock_dt.now.return_value.strftime.return_value = self.TS
+                    engine = Engine(
+                        {"endpoint": "test/model", "media_type": "image"},
+                        tmp_path,
+                    )
+                    return engine.run([InputFile(path=Path(source_name), prompt="test")])
+
+    def test_helper_replaces_first_embedded_timestamp(self):
+        from engine_fal.engine import _output_stem
+
+        assert _output_stem(self.STEM, self.TS) == self.NAMED
+
+    def test_helper_replaces_only_the_first_of_two_timestamps(self):
+        from engine_fal.engine import _output_stem
+
+        assert (
+            _output_stem("a_261014_125811_b_260101_090000", self.TS)
+            == "a_261015_150435_b_260101_090000"
+        )
+
+    def test_helper_prepends_without_embedded_timestamp(self):
+        from engine_fal.engine import _output_stem
+
+        assert _output_stem("b", self.TS) == f"{self.TS}-b"
+
+    def test_saved_path_replaces_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.NAMED}-0.png"
+
+    def test_saved_path_prepends_without_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                "b.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.TS}-b-0.png"
+
+    def test_stream_saved_path_replaces_embedded_timestamp(self, tmp_path):
+        """The stream save site stages and reveals under the same name."""
+        results = self._run_pinned(
+            tmp_path, f"{self.STEM}.md", output=[BytesIO(b"\x89PNG\r\n\x1a\nx")]
+        )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.NAMED}-0.png"
+
+    def test_expected_path_replaces_embedded_timestamp(self, tmp_path):
+        results = self._run_pinned(tmp_path, f"{self.STEM}.md", error="API timeout")
+        assert results[0].status == "error"
+        assert results[0].expected_path.name == f"{self.NAMED}-0.png"
+
+    def test_expected_name_equals_saved_name(self, tmp_path):
+        """Expected and saved names agree — every site uses ``_output_stem``."""
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            saved = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        failed = self._run_pinned(tmp_path, f"{self.STEM}.md", error="API timeout")
+        assert saved[0].status == "ok"
+        assert failed[0].status == "error"
+        assert failed[0].expected_path.name == saved[0].path.name
+
+    def test_multi_output_suffix_kept_with_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={
+                    "images": [
+                        {"url": "https://example.com/a.png"},
+                        {"url": "https://example.com/b.png"},
+                    ]
+                },
+            )
+        assert [r.path.name for r in results] == [
+            f"{self.NAMED}-0_0.png",
+            f"{self.NAMED}-0_1.png",
+        ]
+
+
 class TestImports:
     def test_init_exports_all_names(self):
         from engine_fal import (
