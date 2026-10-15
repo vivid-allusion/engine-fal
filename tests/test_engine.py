@@ -1316,6 +1316,245 @@ class TestOutputNaming:
         ]
 
 
+class TestErrorLog:
+    """Every failed item writes ``<base>-<idx>_ERROR.log`` beside the media.
+
+    Written on provider exceptions, empty-prompt skips, no-output responses,
+    and save/download failures — independent of any logging flags — with its
+    path recorded on the result metadata for the run-level summary.
+    """
+
+    def _run(
+        self,
+        tmp_path,
+        prompt="test",
+        side_effect=None,
+        result=None,
+        profile=None,
+        metadata=None,
+        relative_dir=None,
+        retrieve=_write_temp,
+    ):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            if side_effect is not None:
+                mock_fal_client.subscribe.side_effect = side_effect
+            else:
+                mock_fal_client.subscribe.return_value = result
+            full_profile = {"endpoint": "test/model", "media_type": "image"}
+            full_profile.update(profile or {})
+            item_metadata = dict(metadata or {})
+            if relative_dir:
+                item_metadata["relative_dir"] = relative_dir
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve", side_effect=retrieve):
+                    engine = Engine(full_profile, tmp_path)
+                    return engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt=prompt,
+                                metadata=item_metadata,
+                            )
+                        ]
+                    )
+
+    @staticmethod
+    def _read(result) -> str:
+        """Assert the result names a written log and return its text."""
+        log_path = Path(result.metadata["error_log"])
+        assert log_path.exists()
+        assert result.expected_path is not None
+        assert log_path.name == f"{result.expected_path.stem}_ERROR.log"
+        assert log_path.parent == result.expected_path.parent
+        return log_path.read_text(encoding="utf-8")
+
+    def test_provider_exception_writes_verbose_error_log(self, tmp_path):
+        results = self._run(tmp_path, side_effect=RuntimeError("API timeout"))
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        log_name = Path(results[0].metadata["error_log"]).name
+        assert text.startswith(f"{log_name} — generation failure\n")
+        assert "error stage: provider_call" in text
+        assert "error: RuntimeError: API timeout" in text
+        assert "traceback:" in text
+        assert "Traceback (most recent call last)" in text
+        assert '"prompt": "test"' in text
+        assert f"source: {(Path('b.md').resolve())}" in text
+        assert "note: Written automatically on a failed generation" in text
+        order = [
+            text.index("when:"),
+            text.index("item: 1 of 1"),
+            text.index("source:"),
+            text.index("dest dir:"),
+            text.index("expected:"),
+            text.index("platform: fal"),
+            text.index("endpoint: test/model"),
+            text.index("profile:"),
+            text.index("duration:"),
+            text.index("media:"),
+            text.index("prompt:"),
+            text.index("error stage:"),
+            text.index("error: RuntimeError"),
+            text.index("traceback:"),
+            text.index("api payload:"),
+            text.index("note:"),
+        ]
+        assert order == sorted(order)
+
+    def test_empty_prompt_writes_error_log_with_null_payload(self, tmp_path):
+        results = self._run(tmp_path, prompt="   ")
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: empty_prompt" in text
+        assert "error: Empty prompt after applying prefix/suffix" in text
+        assert "traceback:\nn/a" in text
+        assert "api payload:\nnull" in text
+
+    def test_no_output_writes_error_log_with_payload(self, tmp_path):
+        results = self._run(tmp_path, result={})
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: no_output" in text
+        assert "error: No output returned from fal.ai" in text
+        assert "traceback:\nn/a" in text
+        assert '"prompt": "test"' in text
+
+    def test_download_failure_writes_error_log(self, tmp_path):
+        results = self._run(
+            tmp_path,
+            result={"images": [{"url": "https://example.com/i.png"}]},
+            retrieve=OSError("connection reset"),
+        )
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: save" in text
+        assert "OSError: connection reset" in text
+        assert "Traceback (most recent call last)" in text
+        assert list(tmp_path.glob(".*.part")) == []
+
+    def test_part_reveal_failure_writes_error_log(self, tmp_path):
+        """The stage/reveal flow: a failure after the save event still logs."""
+        with patch.object(Path, "replace", side_effect=OSError("disk full")):
+            results = self._run(
+                tmp_path,
+                result={"images": [{"url": "https://example.com/i.png"}]},
+            )
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: save" in text
+        assert "OSError: disk full" in text
+        assert "Traceback (most recent call last)" in text
+
+    def test_error_log_lands_in_destination_subdir(self, tmp_path):
+        results = self._run(
+            tmp_path, side_effect=RuntimeError("boom"), relative_dir="scene1/nested"
+        )
+
+        log_path = Path(results[0].metadata["error_log"])
+        assert log_path.parent == tmp_path / "scene1" / "nested"
+        assert log_path.exists()
+        assert f"dest dir: {tmp_path / 'scene1' / 'nested'}" in log_path.read_text()
+
+    def test_error_log_records_media_and_duration(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.side_effect = RuntimeError("API timeout")
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                engine = Engine(
+                    {
+                        "endpoint": "test/model",
+                        "media_type": "video",
+                        "duration_param_name": "duration",
+                    },
+                    tmp_path,
+                )
+                results = engine.run(
+                    [
+                        InputFile(
+                            path=Path("b.md"),
+                            prompt="test",
+                            reference_urls=["https://ref.com/first.jpg"],
+                            references={"end_image_url": ["https://ref.com/last.jpg"]},
+                            metadata={"duration": 5, "fps": 24},
+                        )
+                    ]
+                )
+
+        text = self._read(results[0])
+        assert "https://ref.com/first.jpg" in text
+        assert "slot end_image_url:" in text
+        assert "https://ref.com/last.jpg" in text
+        assert "duration: raw=5 effective=5 fps=24" in text
+
+    def test_error_log_masks_key_like_values(self, tmp_path):
+        results = self._run(
+            tmp_path,
+            side_effect=RuntimeError("boom"),
+            profile={
+                "api_key": "short-value-that-must-not-leak",
+                "parameters": {"model_hash": "0123456789abcdef0123"},
+            },
+        )
+
+        text = self._read(results[0])
+        assert "short-value-that-must-not-leak" not in text
+        assert "0123456789abcdef0123" not in text
+        assert "***masked***" in text
+
+    def test_fatal_provider_error_still_writes_error_log(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.side_effect = _FakeError(
+                status=402, detail="Payment required"
+            )
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                engine = Engine(
+                    {"endpoint": "test/model", "media_type": "image"}, tmp_path
+                )
+                results = engine.run(
+                    [
+                        InputFile(path=Path("b.md"), prompt="test"),
+                        InputFile(path=Path("c.md"), prompt="test2"),
+                    ]
+                )
+
+        assert len(results) == 1
+        text = self._read(results[0])
+        assert "error stage: provider_call" in text
+        assert "error: _FakeError: Payment required" in text
+
+
+class TestMaskSecrets:
+    def test_masks_values_under_secret_bearing_keys(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"api_key": "abc", "token": "xyz", "url": "https://x.com/a.png"})
+        assert masked == {
+            "api_key": "***masked***",
+            "token": "***masked***",
+            "url": "https://x.com/a.png",
+        }
+
+    def test_masks_key_like_values_under_plain_keys(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"seed": "0123456789abcdef0123"})
+        assert masked["seed"] == "***masked***"
+
+    def test_recurses_into_nested_structures(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"parameters": {"api_key": "abc"}, "refs": ["abc"]})
+        assert masked["parameters"]["api_key"] == "***masked***"
+        assert masked["refs"] == ["abc"]
+
+
 class TestImports:
     def test_init_exports_all_names(self):
         from engine_fal import (
