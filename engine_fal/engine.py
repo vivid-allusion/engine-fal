@@ -34,6 +34,7 @@ class Engine:
         self._on_progress = on_progress
         self._prefix = profile.get("prompt_prefix", "")
         self._suffix = profile.get("prompt_suffix", "")
+        self._concurrency = profile.get("concurrency", 1)
         self._input_props_cache: dict | None = None
 
     def run(self, inputs: list[InputFile]) -> list[OutputFile]:
@@ -46,6 +47,11 @@ class Engine:
         media_type = self._profile.get("media_type", "")
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
+        if self._concurrency > 1:
+            from . import runner
+
+            return runner.run_batch(self, inputs)
+
         results: list[OutputFile] = []
         total = len(inputs)
         consecutive_conflicts = 0
@@ -57,7 +63,7 @@ class Engine:
             prefix = f"[{current}/{total}]"
             rel_dir = str(item.metadata.get("relative_dir", "") or "")
             dest_dir = self._output_dir / rel_dir if rel_dir else self._output_dir
-            ts = datetime.now().strftime("%y%m%d_%H%M%S")
+            ts = self._now_string()
             ext = self._default_extension(media_type)
             expected = dest_dir / f"{ts}-{stem}-{idx}{ext}"
 
@@ -172,6 +178,15 @@ class Engine:
     def _validate_preflight(self):
         if not self._profile.get("endpoint"):
             raise EngineError("Missing or empty 'endpoint' in profile")
+        if (
+            isinstance(self._concurrency, bool)
+            or not isinstance(self._concurrency, int)
+            or self._concurrency < 1
+        ):
+            raise EngineError(
+                f"Invalid 'concurrency' in profile: {self._concurrency!r} — "
+                "must be a whole number >= 1"
+            )
         try:
             import fal_client  # noqa: F401
         except ImportError:
@@ -188,6 +203,9 @@ class Engine:
         if key and self.API_KEY_ENV_VAR not in os.environ:
             os.environ[self.API_KEY_ENV_VAR] = key
         return key
+
+    def _now_string(self) -> str:
+        return datetime.now().strftime("%y%m%d_%H%M%S")
 
     def _default_extension(self, media_type: str) -> str:
         """Profile-driven extension used for precomputed output names."""
