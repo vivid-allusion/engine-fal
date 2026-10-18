@@ -2,6 +2,7 @@
 platform: fal
 endpoint: fal-ai/nano-banana-pro/edit
 media_type: image
+concurrency: 2
 image_url_param: image_urls
 reference_param_multi: true
 parameters:

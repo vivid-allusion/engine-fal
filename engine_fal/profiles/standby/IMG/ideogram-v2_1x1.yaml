@@ -2,6 +2,7 @@
 platform: fal
 endpoint: fal-ai/ideogram/v2
 media_type: image
+concurrency: 2
 parameters:
   aspect_ratio: "1:1"
   resolution: "1K"

@@ -2,6 +2,7 @@
 platform: fal
 endpoint: minimax/h3-max-turbo/image-to-video
 media_type: video
+concurrency: 1
 image_url_param: image_url
 duration_type: seconds
 duration_param_name: duration

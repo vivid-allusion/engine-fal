@@ -6,6 +6,7 @@
 platform: fal
 endpoint: bytedance/seedance-2.5/text-to-video
 media_type: video
+concurrency: 1
 duration_type: seconds
 duration_param_name: duration
 parameters:

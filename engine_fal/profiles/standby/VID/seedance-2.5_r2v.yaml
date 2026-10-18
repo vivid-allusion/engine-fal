@@ -5,6 +5,7 @@
 platform: fal
 endpoint: bytedance/seedance-2.5/reference-to-video
 media_type: video
+concurrency: 1
 image_url_param: image_urls
 reference_param: image_urls
 reference_param_multi: true

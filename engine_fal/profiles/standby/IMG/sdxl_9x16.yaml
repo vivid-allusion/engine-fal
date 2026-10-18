@@ -2,6 +2,7 @@
 platform: fal
 endpoint: fal-ai/stable-diffusion-v35-large
 media_type: image
+concurrency: 2
 parameters:
   aspect_ratio: "9:16"
   resolution: "1K"

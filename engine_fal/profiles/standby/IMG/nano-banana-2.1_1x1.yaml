@@ -2,6 +2,7 @@
 platform: fal
 endpoint: fal-ai/nano-banana-2.1
 media_type: image
+concurrency: 2
 parameters:
   aspect_ratio: "1:1"
   resolution: "1K"
