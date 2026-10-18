@@ -1205,6 +1205,356 @@ class TestCircuitBreakerAndFatalAbort:
                 assert mock_fal_client.subscribe.call_count == 1
 
 
+class TestOutputNaming:
+    """An embedded timestamp in the stem is replaced, never double-dated.
+
+    A bullet reused across runs (its filename already carries
+    ``YYMMDD_HHMMSS``) keeps one date in the output name; stems without one
+    keep the historical ``{ts}-{stem}`` prepend.
+    """
+
+    STEM = "0099_261014_125811-81_rw-80-1-0"
+    TS = "261015_150435"
+    NAMED = "0099_261015_150435-81_rw-80-1-0"
+
+    def _run_pinned(self, tmp_path, source_name: str, output=None, error: str | None = None):
+        """Run one bullet with ``datetime.now()`` pinned to TS."""
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            if error:
+                mock_fal_client.subscribe.side_effect = RuntimeError(error)
+            else:
+                mock_fal_client.subscribe.return_value = output
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("engine_fal.engine.datetime") as mock_dt:
+                    mock_dt.now.return_value.strftime.return_value = self.TS
+                    engine = Engine(
+                        {"endpoint": "test/model", "media_type": "image"},
+                        tmp_path,
+                    )
+                    return engine.run([InputFile(path=Path(source_name), prompt="test")])
+
+    def test_helper_replaces_first_embedded_timestamp(self):
+        from engine_fal.engine import _output_stem
+
+        assert _output_stem(self.STEM, self.TS) == self.NAMED
+
+    def test_helper_replaces_only_the_first_of_two_timestamps(self):
+        from engine_fal.engine import _output_stem
+
+        assert (
+            _output_stem("a_261014_125811_b_260101_090000", self.TS)
+            == "a_261015_150435_b_260101_090000"
+        )
+
+    def test_helper_prepends_without_embedded_timestamp(self):
+        from engine_fal.engine import _output_stem
+
+        assert _output_stem("b", self.TS) == f"{self.TS}-b"
+
+    def test_saved_path_replaces_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.NAMED}-0.png"
+
+    def test_saved_path_prepends_without_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                "b.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.TS}-b-0.png"
+
+    def test_stream_saved_path_replaces_embedded_timestamp(self, tmp_path):
+        """The stream save site stages and reveals under the same name."""
+        results = self._run_pinned(
+            tmp_path, f"{self.STEM}.md", output=[BytesIO(b"\x89PNG\r\n\x1a\nx")]
+        )
+        assert results[0].status == "ok"
+        assert results[0].path.name == f"{self.NAMED}-0.png"
+
+    def test_expected_path_replaces_embedded_timestamp(self, tmp_path):
+        results = self._run_pinned(tmp_path, f"{self.STEM}.md", error="API timeout")
+        assert results[0].status == "error"
+        assert results[0].expected_path.name == f"{self.NAMED}-0.png"
+
+    def test_expected_name_equals_saved_name(self, tmp_path):
+        """Expected and saved names agree — every site uses ``_output_stem``."""
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            saved = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={"images": [{"url": "https://example.com/img.png"}]},
+            )
+        failed = self._run_pinned(tmp_path, f"{self.STEM}.md", error="API timeout")
+        assert saved[0].status == "ok"
+        assert failed[0].status == "error"
+        assert failed[0].expected_path.name == saved[0].path.name
+
+    def test_multi_output_suffix_kept_with_embedded_timestamp(self, tmp_path):
+        with patch("urllib.request.urlretrieve", side_effect=_write_temp):
+            results = self._run_pinned(
+                tmp_path,
+                f"{self.STEM}.md",
+                output={
+                    "images": [
+                        {"url": "https://example.com/a.png"},
+                        {"url": "https://example.com/b.png"},
+                    ]
+                },
+            )
+        assert [r.path.name for r in results] == [
+            f"{self.NAMED}-0_0.png",
+            f"{self.NAMED}-0_1.png",
+        ]
+
+
+class TestErrorLog:
+    """Every failed item writes ``<base>-<idx>_ERROR.log`` beside the media.
+
+    Written on provider exceptions, empty-prompt skips, no-output responses,
+    and save/download failures — independent of any logging flags — with its
+    path recorded on the result metadata for the run-level summary.
+    """
+
+    def _run(
+        self,
+        tmp_path,
+        prompt="test",
+        side_effect=None,
+        result=None,
+        profile=None,
+        metadata=None,
+        relative_dir=None,
+        retrieve=_write_temp,
+    ):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            if side_effect is not None:
+                mock_fal_client.subscribe.side_effect = side_effect
+            else:
+                mock_fal_client.subscribe.return_value = result
+            full_profile = {"endpoint": "test/model", "media_type": "image"}
+            full_profile.update(profile or {})
+            item_metadata = dict(metadata or {})
+            if relative_dir:
+                item_metadata["relative_dir"] = relative_dir
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                with patch("urllib.request.urlretrieve", side_effect=retrieve):
+                    engine = Engine(full_profile, tmp_path)
+                    return engine.run(
+                        [
+                            InputFile(
+                                path=Path("b.md"),
+                                prompt=prompt,
+                                metadata=item_metadata,
+                            )
+                        ]
+                    )
+
+    @staticmethod
+    def _read(result) -> str:
+        """Assert the result names a written log and return its text."""
+        log_path = Path(result.metadata["error_log"])
+        assert log_path.exists()
+        assert result.expected_path is not None
+        assert log_path.name == f"{result.expected_path.stem}_ERROR.log"
+        assert log_path.parent == result.expected_path.parent
+        return log_path.read_text(encoding="utf-8")
+
+    def test_provider_exception_writes_verbose_error_log(self, tmp_path):
+        results = self._run(tmp_path, side_effect=RuntimeError("API timeout"))
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        log_name = Path(results[0].metadata["error_log"]).name
+        assert text.startswith(f"{log_name} — generation failure\n")
+        assert "error stage: provider_call" in text
+        assert "error: RuntimeError: API timeout" in text
+        assert "traceback:" in text
+        assert "Traceback (most recent call last)" in text
+        assert '"prompt": "test"' in text
+        assert f"source: {(Path('b.md').resolve())}" in text
+        assert "note: Written automatically on a failed generation" in text
+        order = [
+            text.index("when:"),
+            text.index("item: 1 of 1"),
+            text.index("source:"),
+            text.index("dest dir:"),
+            text.index("expected:"),
+            text.index("platform: fal"),
+            text.index("endpoint: test/model"),
+            text.index("profile:"),
+            text.index("duration:"),
+            text.index("media:"),
+            text.index("prompt:"),
+            text.index("error stage:"),
+            text.index("error: RuntimeError"),
+            text.index("traceback:"),
+            text.index("api payload:"),
+            text.index("note:"),
+        ]
+        assert order == sorted(order)
+
+    def test_empty_prompt_writes_error_log_with_null_payload(self, tmp_path):
+        results = self._run(tmp_path, prompt="   ")
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: empty_prompt" in text
+        assert "error: Empty prompt after applying prefix/suffix" in text
+        assert "traceback:\nn/a" in text
+        assert "api payload:\nnull" in text
+
+    def test_no_output_writes_error_log_with_payload(self, tmp_path):
+        results = self._run(tmp_path, result={})
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: no_output" in text
+        assert "error: No output returned from fal.ai" in text
+        assert "traceback:\nn/a" in text
+        assert '"prompt": "test"' in text
+
+    def test_download_failure_writes_error_log(self, tmp_path):
+        results = self._run(
+            tmp_path,
+            result={"images": [{"url": "https://example.com/i.png"}]},
+            retrieve=OSError("connection reset"),
+        )
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: save" in text
+        assert "OSError: connection reset" in text
+        assert "Traceback (most recent call last)" in text
+        assert list(tmp_path.glob(".*.part")) == []
+
+    def test_part_reveal_failure_writes_error_log(self, tmp_path):
+        """The stage/reveal flow: a failure after the save event still logs."""
+        with patch.object(Path, "replace", side_effect=OSError("disk full")):
+            results = self._run(
+                tmp_path,
+                result={"images": [{"url": "https://example.com/i.png"}]},
+            )
+
+        assert results[0].status == "error"
+        text = self._read(results[0])
+        assert "error stage: save" in text
+        assert "OSError: disk full" in text
+        assert "Traceback (most recent call last)" in text
+
+    def test_error_log_lands_in_destination_subdir(self, tmp_path):
+        results = self._run(
+            tmp_path, side_effect=RuntimeError("boom"), relative_dir="scene1/nested"
+        )
+
+        log_path = Path(results[0].metadata["error_log"])
+        assert log_path.parent == tmp_path / "scene1" / "nested"
+        assert log_path.exists()
+        assert f"dest dir: {tmp_path / 'scene1' / 'nested'}" in log_path.read_text()
+
+    def test_error_log_records_media_and_duration(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.side_effect = RuntimeError("API timeout")
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                engine = Engine(
+                    {
+                        "endpoint": "test/model",
+                        "media_type": "video",
+                        "duration_param_name": "duration",
+                    },
+                    tmp_path,
+                )
+                results = engine.run(
+                    [
+                        InputFile(
+                            path=Path("b.md"),
+                            prompt="test",
+                            reference_urls=["https://ref.com/first.jpg"],
+                            references={"end_image_url": ["https://ref.com/last.jpg"]},
+                            metadata={"duration": 5, "fps": 24},
+                        )
+                    ]
+                )
+
+        text = self._read(results[0])
+        assert "https://ref.com/first.jpg" in text
+        assert "slot end_image_url:" in text
+        assert "https://ref.com/last.jpg" in text
+        assert "duration: raw=5 effective=5 fps=24" in text
+
+    def test_error_log_masks_key_like_values(self, tmp_path):
+        results = self._run(
+            tmp_path,
+            side_effect=RuntimeError("boom"),
+            profile={
+                "api_key": "short-value-that-must-not-leak",
+                "parameters": {"model_hash": "0123456789abcdef0123"},
+            },
+        )
+
+        text = self._read(results[0])
+        assert "short-value-that-must-not-leak" not in text
+        assert "0123456789abcdef0123" not in text
+        assert "***masked***" in text
+
+    def test_fatal_provider_error_still_writes_error_log(self, tmp_path):
+        with patch.dict("os.environ", {"FAL_KEY": "test_key"}):
+            mock_fal_client = MagicMock()
+            mock_fal_client.subscribe.side_effect = _FakeError(
+                status=402, detail="Payment required"
+            )
+            with patch.dict("sys.modules", {"fal_client": mock_fal_client}):
+                engine = Engine(
+                    {"endpoint": "test/model", "media_type": "image"}, tmp_path
+                )
+                results = engine.run(
+                    [
+                        InputFile(path=Path("b.md"), prompt="test"),
+                        InputFile(path=Path("c.md"), prompt="test2"),
+                    ]
+                )
+
+        assert len(results) == 1
+        text = self._read(results[0])
+        assert "error stage: provider_call" in text
+        assert "error: _FakeError: Payment required" in text
+
+
+class TestMaskSecrets:
+    def test_masks_values_under_secret_bearing_keys(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"api_key": "abc", "token": "xyz", "url": "https://x.com/a.png"})
+        assert masked == {
+            "api_key": "***masked***",
+            "token": "***masked***",
+            "url": "https://x.com/a.png",
+        }
+
+    def test_masks_key_like_values_under_plain_keys(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"seed": "0123456789abcdef0123"})
+        assert masked["seed"] == "***masked***"
+
+    def test_recurses_into_nested_structures(self):
+        from engine_fal.engine import _mask_secrets
+
+        masked = _mask_secrets({"parameters": {"api_key": "abc"}, "refs": ["abc"]})
+        assert masked["parameters"]["api_key"] == "***masked***"
+        assert masked["refs"] == ["abc"]
+
+
 class TestImports:
     def test_init_exports_all_names(self):
         from engine_fal import (

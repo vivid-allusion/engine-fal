@@ -1,9 +1,26 @@
 """Fal response normalization and file saving.
 """
 
+import re
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+
+
+_EMBEDDED_TIMESTAMP_RE = re.compile(r"(?<![0-9])[0-9]{6}_[0-9]{6}(?![0-9])")
+
+
+def _output_stem(stem: str, ts: str) -> str:
+    """Name the output file after its source stem and the generation timestamp.
+
+    When the stem already embeds a ``YYMMDD_HHMMSS`` timestamp, the first
+    occurrence is replaced in place with ``ts`` — re-running the same bullet
+    keeps one date in the name instead of stacking a second one. Stems
+    without an embedded timestamp keep the historical ``{ts}-{stem}``
+    prepend.
+    """
+    replaced, count = _EMBEDDED_TIMESTAMP_RE.subn(ts, stem, count=1)
+    return replaced if count else f"{ts}-{stem}"
 
 
 class FalOutputHandler:
@@ -52,13 +69,14 @@ class FalOutputHandler:
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         ts = datetime.now().strftime("%y%m%d_%H%M%S")
+        named_stem = _output_stem(stem, ts)
         saved = []
         for i, item in enumerate(raw_output):
             if isinstance(item, str):
                 self._emit(f"{prefix} ⬇️  Downloading...")
                 ext = self._infer_extension(item, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{named_stem}-{idx}{suffix}{ext}"
                 temp = dest_dir / f".{dest.name}.part"
                 try:
                     urllib.request.urlretrieve(item, temp)
@@ -83,7 +101,7 @@ class FalOutputHandler:
                 data = item.read()
                 ext = self._sniff_extension(data, media_type)
                 suffix = "" if len(raw_output) == 1 else f"_{i}"
-                dest = dest_dir / f"{ts}-{stem}-{idx}{suffix}{ext}"
+                dest = dest_dir / f"{named_stem}-{idx}{suffix}{ext}"
                 temp = dest_dir / f".{dest.name}.part"
                 try:
                     with open(temp, "wb") as f:

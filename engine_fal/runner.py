@@ -16,6 +16,7 @@ import time
 from datetime import datetime
 
 from .datatypes import OutputFile
+from .engine import _write_error_log, _output_stem
 
 
 class BatchState:
@@ -53,34 +54,46 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
     dest_dir = engine._output_dir / rel_dir if rel_dir else engine._output_dir
     ts = engine._now_string()
     ext = engine._default_extension(media_type)
-    expected = dest_dir / f"{ts}-{stem}-{idx}{ext}"
+    base = _output_stem(stem, ts)
+    expected = dest_dir / f"{base}-{idx}{ext}"
 
     engine._emit(f"{prefix} 📡 Calling {engine.PROVIDER_NAME} API...")
     prompt = f"{engine._prefix}{item.prompt}{engine._suffix}".strip()
     if not prompt:
+        reason = "Empty prompt after applying prefix/suffix"
+        log_path = _write_error_log(
+            dest_dir, base, idx, platform=engine.PLATFORM, item=item,
+            current=current, total=total, expected=expected, profile=engine._profile,
+            prompt=prompt, stage="empty_prompt", error=reason,
+            traceback_text="n/a", api_payload=None,
+        )
         return [
             OutputFile(
                 source_path=item.path,
                 status="error",
-                error_msg="Empty prompt after applying prefix/suffix",
+                error_msg=reason,
                 media_type=media_type,
                 expected_path=expected,
+                metadata=engine._error_log_metadata(log_path),
             )
         ]
 
     engine._emit(f"{prefix} 📝 Markdown: {item.path.name}")
 
     fal_input: dict | None = None
+    stage = "build_input"
     try:
         fal_input = engine._build_fal_input(
             dict(engine._profile.get("parameters", {})), prompt, item, media_type
         )
+        stage = "provider_call"
         raw_result = engine._request_with_retry(
             fal_client, engine._profile["endpoint"], fal_input, prefix
         )
         engine._emit(f"{prefix} ✅ Response received")
         engine._emit(f"{prefix} 📦 Payload: {fal_input}")
 
+        stage = "save"
         raw_output = engine._normalize_result(raw_result, media_type)
         saved = engine._save_results(
             raw_output,
@@ -94,13 +107,21 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
             fal_input,
         )
         if not saved:
+            reason = "No output returned from fal.ai"
+            log_path = _write_error_log(
+                dest_dir, base, idx, platform=engine.PLATFORM, item=item,
+                current=current, total=total, expected=expected, profile=engine._profile,
+                prompt=prompt, stage="no_output", error=reason,
+                traceback_text="n/a", api_payload=fal_input,
+            )
             return [
                 OutputFile(
                     source_path=item.path,
                     status="error",
-                    error_msg="No output returned from fal.ai",
+                    error_msg=reason,
                     media_type=media_type,
                     expected_path=expected,
+                    metadata=engine._error_log_metadata(log_path),
                 )
             ]
         state.note_success()
@@ -122,12 +143,19 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
             total=total,
             api_payload=fal_input,
         )
+        log_path = _write_error_log(
+            dest_dir, base, idx, platform=engine.PLATFORM, item=item,
+            current=current, total=total, expected=expected, profile=engine._profile,
+            prompt=prompt, stage=stage, error=f"{type(exc).__name__}: {exc}",
+            traceback_text=traceback.format_exc(), api_payload=fal_input,
+        )
         output = OutputFile(
             source_path=item.path,
             status="error",
             error_msg=str(exc),
             media_type=media_type,
             expected_path=expected,
+            metadata=engine._error_log_metadata(log_path),
         )
         if engine._is_fatal(exc):
             engine._emit(
