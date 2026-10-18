@@ -160,6 +160,7 @@ class TestParallelRunner:
         )
         assert any("Circuit breaker tripped" in e.message for e in progress)
         assert probed.calls <= 3
+        assert len(results) == probed.calls
         assert results
         assert all(r.status == "error" for r in results)
 
