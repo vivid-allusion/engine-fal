@@ -33,6 +33,54 @@ discover this Engine, load it via `engine_loader.py`, and call
 - **`profiles/standby/`** contains publishable YAML profiles. When installed,
   these are seeded into Generator repos' `USER-FILES/02.STANDBY/`.
 
+## NON-NEGOTIABLE: Endpoint TOMLs Mirror the Live Schema
+
+**The endpoint TOML catalog is NOT a "curated subset".** Every input the
+model accepts server-side MUST be declared in the TOML — no exceptions, no
+omissions. A missing param is a **bug**, not an editorial choice: a profile
+that cannot express the model's real inputs sends either an incomplete or an
+invented payload, and fal answers with a 422 the user only sees as a failure.
+
+The rules, hard:
+
+1. **Every server-side Input property** (except `prompt`) is declared in the
+   TOML — as `[general] image_url_param` (the primary media input), a
+   `[general] slots` entry (every other `*_url`/`*_urls` input), or a
+   `[params.*]` entry (every scalar).
+2. **Nothing undeclared is invented.** No `[params.*]` key may exist that is
+   not in the live schema; no slot may point at a key the server does not
+   accept. The 2026-10-26 sweep removed `aspect_ratio`/`resolution` from
+   flux-pro, flux-schnell, recraft-v3, sdxl and ideogram-v2, `duration` from
+   ltx-video and minimax-video, and the `image_url` start-frame keys from the
+   two prompt-only video endpoints — all of them had been sent to endpoints
+   that never accepted them.
+3. **Options and ranges mirror the server exactly.** `select` options equal
+   the server enum (no dropped values, no invented values), `integer`/`number`
+   min/max equal the server bounds, and defaults equal the server default
+   wherever the server declares one.
+4. **Unrenderable inputs are exempt, and exactly that set is exempt.** fal's
+   schemas carry structured inputs the wizard has no widget for (`history`,
+   `context`, `ip_adapter`, `controlnet`, `loras`, `colors`). They are listed
+   in a single checked comment, `# UNRENDERABLE: …`, and the gate fails when
+   the comment and the schema disagree.
+5. **Verified by `scripts/check_schema_sync.py`.** It fetches the live queue
+   OpenAPI for every endpoint and diffs it against the TOML catalog. The
+   models API needs no key. Run it before committing any TOML change and after
+   any model bump:
+
+   ```
+   python scripts/check_schema_sync.py                  # live
+   python scripts/check_schema_sync.py --cache-dir DIR   # pinned/offline
+   ```
+
+   Exit code 1 = drift = **do not merge**. A clean run is a precondition for
+   shipping endpoint TOMLs. The offline logic is unit-tested
+   (`tests/test_schema_sync.py`) so regressions in the checker itself are
+   caught without network access.
+6. **A deprecated endpoint leaves the catalog.** fal stopped publishing an
+   OpenAPI schema for `fal-ai/mochi-v1` (status `deprecated`); its TOML was
+   removed rather than kept pointing at a dead row.
+
 ### Provider details
 
 | Field | Value |
@@ -57,10 +105,17 @@ Generators find this Engine via `engine_loader.py`:
 | `engine_fal/engine.py` | Engine implementation — all SDK calls live here |
 | `engine_fal/datatypes.py` | InputFile, OutputFile, ProgressEvent, EngineError |
 | `engine_fal/metadata.py` | Zero-dependency identity constants (studiolot reads this) |
-| `engine_fal/__init__.py` | Re-exports Engine + all datatypes |
+| `engine_fal/__init__.py` | Re-exports Engine + all datatypes + `list_standby_profiles(media_type)` shelf selector |
+| `engine_fal/input_builder.py` | Payload building + live-schema shaping/coercion (mixin) |
+| `engine_fal/output_handler.py` | Result normalization, stream sniffing, atomic save (mixin) |
+| `engine_fal/retry_policy.py` | Backoff, Retry-After, error classification (mixin) |
 | `engine_fal/endpoints/` | TOML model catalog (IMG/VID/TXT/Vision) |
-| `engine_fal/profiles/standby/IMG/` | Publishable YAML profiles by media category, mirroring the endpoint catalog |
+| `engine_fal/profiles/standby/` | Publishable YAML profiles by category (IMG/VID) |
+| `scripts/check_schema_sync.py` | Live schema ↔ TOML drift checker (NON-NEGOTIABLE gate) |
 | `tests/test_engine.py` | Unit tests |
+| `tests/test_schema_sync.py` | Offline checker-logic tests |
+| `tests/test_concurrency_key.py` | `concurrency` key regression gate |
+| `tests/test_retry_after.py` | Retry-After policy proofs (stub-only) |
 | `tests/conftest.py` | Offline guard — stubs the live schema fetch so tests never call the fal models API |
 | `pyproject.toml` | Package metadata, pip-installable |
 | `requirements.txt` | Provider SDK + dependencies |
@@ -71,6 +126,57 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
 
 ### Session History
 
+- 2026-10-26 — Gold parity: live schema gate + catalog swept to zero drift
+  - **New gate** `scripts/check_schema_sync.py` — the fal twin of the gold
+    engine's checker, key-free (the models API publishes each endpoint's queue
+    OpenAPI through `expand=openapi-3.0`), spaced and retried on 429/network
+    errors, with `--cache-dir` for pinned or offline runs. It enforces
+    coverage, no invention, enum/range/default equality, media-vs-param
+    placement, required-vs-optional, `duration_param_name` existence, and an
+    exact `# UNRENDERABLE:` set for structured inputs the wizard cannot show.
+    Offline logic covered by `tests/test_schema_sync.py` (24 tests).
+  - **Catalog swept**: 109 violations across 17 of 21 endpoints → 0 across 20.
+    flux-pro, flux-schnell, ideogram-v2, recraft-v3 and sdxl lost the invented
+    `aspect_ratio`/`resolution` pair and gained the real `image_size` presets
+    (plus `output_format`, `seed`, `sync_mode`, `guidance_scale`,
+    `num_inference_steps`, `enable_safety_checker`, `style`, `expand_prompt`,
+    `negative_prompt`, `prompt_optimizer`, `acceleration`,
+    `safety_tolerance`, `enhance_prompt` where the schema has them); the
+    nano-banana-2/-pro families and their edit endpoints gained the thinking,
+    sampling and history controls they were hiding; h3-max-turbo gained
+    `target_audio_url` as a slot and `sync_mode`; seedance-2.5 (all three)
+    gained `codec` and `draft`, `task` gained the server's `auto`, and the
+    duration default now equals the server's `auto` (each standby profile
+    still pins `5` explicitly, so profile cost stays deterministic);
+    ltx-video and minimax-video lost `image_url`, `aspect_ratio` and
+    `duration` — both are prompt-only text-to-video on fal. 15 standby
+    profiles were repointed from `aspect_ratio`/`resolution` to `image_size`
+    (and `output_format: png` where the model has it).
+  - **Removed** `endpoints/VID-Models/mochi-1.toml`: `fal-ai/mochi-v1` is
+    `deprecated` and publishes no schema. Breaking catalog change, recorded
+    here; no standby profile referenced it.
+  - **Retry policy split out** into `engine_fal/retry_policy.py` (mixin, as in
+    the gold engine) — `engine.py` is 234 lines. `_retry_after_seconds` is now
+    the gold's hardened version plus fal's reality: headers may live on
+    `exc.response.headers`, numeric values may arrive as int/float, header
+    names are matched case-insensitively, and every malformed shape (None,
+    non-mapping, unparseable, bad HTTP-date) degrades to "no hint" instead of
+    raising.
+  - **Ported suites**: `tests/test_concurrency_key.py` (absent `concurrency` ≡
+    1, never sent to the provider, invalid values raise, fatal identity) and
+    the full Retry-After matrix. Suite: 148 green.
+  - **UI consequences, stated plainly**: h3-max-turbo `duration` is a numeric
+    field because the server accepts fractional seconds (0.92–15), not a
+    1–15 select; `prompt_expansion_mode` is free text because fal publishes
+    documented examples (`disabled|balanced|quality`), not an enum — the
+    note names them; flux/recraft/sdxl aspect control is now
+    `image_size` presets (`landscape_16_9` …) because that is what those
+    endpoints accept.
+  - **Known follow-up (filed, not fixed)**: there is no profile-level gate
+    asserting that every `parameters:` key in a standby YAML exists in its
+    endpoint TOML. The 2026-10-26 drift (`aspect_ratio` on flux-pro) would
+    have been caught by one. PyYAML is not on the dev box's system python, so
+    the gate needs a parser decision first.
 - 2026-10-10 — Nano Banana 2.1 catalog added to the IMG shelf
   - Two endpoint TOMLs mirror the live fal OpenAPI schemas (verified, 0 drift):
     `nano-banana-2.1` and `nano-banana-2.1/edit`. Both are token-billed — text

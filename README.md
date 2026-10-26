@@ -28,7 +28,7 @@ profile = {
     "platform": "fal",
     "endpoint": "fal-ai/flux/schnell",
     "media_type": "image",
-    "parameters": {"aspect_ratio": "16:9"},
+    "parameters": {"image_size": "landscape_16_9"},
 }
 
 engine = Engine(profile, "/tmp/output", api_key="your_fal_key")
@@ -53,21 +53,29 @@ Get a key at https://fal.ai/dashboard
 ```
 engine-fal/
 ├── engine_fal/
-│   ├── engine.py       ← Engine class wrapping the fal SDK
-│   ├── datatypes.py    ← InputFile, OutputFile, ProgressEvent, EngineError
-│   ├── metadata.py     ← Zero-dependency identity constants
-│   ├── __init__.py     ← Re-exports + list_standby_profiles(media_type)
+│   ├── engine.py         ← Engine class wrapping the fal SDK
+│   ├── input_builder.py  ← payload building + live-schema shaping (mixin)
+│   ├── output_handler.py ← result normalization, stream sniffing, atomic save (mixin)
+│   ├── retry_policy.py   ← backoff, Retry-After, error classification (mixin)
+│   ├── datatypes.py      ← InputFile, OutputFile, ProgressEvent, EngineError
+│   ├── metadata.py       ← Zero-dependency identity constants
+│   ├── __init__.py       ← Re-exports + list_standby_profiles(media_type)
 │   ├── endpoints/
 │   │   ├── IMG-Models/    ← image model TOMLs (flux, ideogram, sdxl, recraft, nano-banana family)
-│   │   ├── VID-Models/    ← video model TOMLs (mochi, ltx, minimax, h3-max-turbo, seedance-2.5)
+│   │   ├── VID-Models/    ← video model TOMLs (ltx, minimax, h3-max-turbo, seedance-2.5)
 │   │   ├── TXT-Models/    ← .gitkeep (fal.ai is image/video only)
 │   │   └── Vision-Models/ ← .gitkeep (fal.ai is image/video only)
 │   └── profiles/standby/{IMG,VID}/ ← publishable standby YAML profiles by media type
+├── scripts/
+│   └── check_schema_sync.py ← live schema ↔ TOML drift gate
 ├── pyproject.toml      ← pip install definition
 ├── requirements.txt    ← fal-client>=1.0
 └── tests/
     ├── conftest.py     ← offline guard (no live schema fetch in tests)
-    └── test_engine.py  ← unit tests
+    ├── test_engine.py  ← unit tests
+    ├── test_schema_sync.py ← offline tests for the drift gate
+    ├── test_concurrency_key.py ← concurrency-key regression gate
+    └── test_retry_after.py ← Retry-After policy proofs
 ```
 
 The engine mirrors the behaviour of the gold engine (`engine-replicate`):
@@ -78,6 +86,18 @@ parameters are coerced against the endpoint's live openapi Input schema.
 Named reference slots (Seedance/H3) route to their own keys, `slot_scalar`
 marks string-valued slots, and the generator-only `fps` key never reaches the
 provider.
+
+## Catalog gate
+
+The endpoint TOMLs mirror fal's live queue OpenAPI exactly — every accepted
+input is declared, nothing invented, enums/ranges/defaults equal. Verify
+before committing any TOML change (no API key needed):
+
+```bash
+python scripts/check_schema_sync.py
+```
+
+Exit code 1 means drift: fix the TOML, do not merge.
 
 ## Contract
 
