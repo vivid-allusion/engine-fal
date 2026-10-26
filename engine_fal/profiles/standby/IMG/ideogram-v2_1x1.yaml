@@ -5,7 +5,6 @@ media_type: image
 concurrency: 2
 parameters:
   aspect_ratio: "1:1"
-  resolution: "1K"
 pricing:
   base_cost: 0.04
   currency: USD

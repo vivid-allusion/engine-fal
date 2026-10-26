@@ -14,25 +14,15 @@ note = "$0.025/s at 480P, $0.04/s at 768P, $0.08/s at 1080P. Promotional 75%-off
 image_url_param = "image_url"
 duration_type = "seconds"
 duration_param_name = "duration"
-slots = ["end_image_url"]
+slots = ["end_image_url", "target_audio_url"]
 
 [params.duration]
 label = "Duration"
-type = "select"
-default = "5"
-options = [
-  { value = "5",  label = "5s · Default" },
-  { value = "6",  label = "6s" },
-  { value = "7",  label = "7s" },
-  { value = "8",  label = "8s" },
-  { value = "9",  label = "9s" },
-  { value = "10", label = "10s" },
-  { value = "11", label = "11s" },
-  { value = "12", label = "12s" },
-  { value = "13", label = "13s" },
-  { value = "14", label = "14s" },
-  { value = "15", label = "15s · Max" },
-]
+type = "number"
+default = 5
+optional = true
+min = 0.92
+max = 15
 
 [params.resolution]
 label = "Resolution"
@@ -47,13 +37,9 @@ options = [
 
 [params.prompt_expansion_mode]
 label = "Prompt Expansion"
-type = "select"
+type = "text"
 default = "balanced"
-optional = true
-options = [
-  { value = "balanced", label = "Balanced · ~1s rewrite" },
-  { value = "quality",  label = "Quality · up to ~30s richer rewrite" },
-]
+note = "Documented values: disabled, balanced, quality."
 
 [params.enable_safety_checker]
 label = "Safety Checker"
@@ -66,3 +52,11 @@ label = "Random Seed"
 type = "integer"
 optional = true
 hidden = true
+
+[params.sync_mode]
+label = "Sync Mode"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Return the generated video as base64 instead of a CDN URL."

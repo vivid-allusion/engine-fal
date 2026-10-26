@@ -15,7 +15,6 @@ image_url_param = "image_url"
 duration_type = "seconds"
 duration_param_name = "duration"
 slots = ["end_image_url"]
-slot_scalar = ["end_image_url"]
 
 [params.resolution]
 label = "Resolution"
@@ -28,19 +27,19 @@ options = [
   { value = "1080p", label = "1080p · High quality" },
 ]
 
-# Server default is "auto"; 5 keeps profile cost estimation deterministic.
 [params.duration]
 label = "Duration"
 type = "select"
-default = "5"
+default = "auto"
+optional = true
 options = [
   { value = "auto", label = "auto · Model decides" },
-  { value = "4",  label = "4s" },
-  { value = "5",  label = "5s" },
-  { value = "6",  label = "6s" },
-  { value = "7",  label = "7s" },
-  { value = "8",  label = "8s" },
-  { value = "9",  label = "9s" },
+  { value = "4", label = "4s" },
+  { value = "5", label = "5s" },
+  { value = "6", label = "6s" },
+  { value = "7", label = "7s" },
+  { value = "8", label = "8s" },
+  { value = "9", label = "9s" },
   { value = "10", label = "10s" },
   { value = "11", label = "11s" },
   { value = "12", label = "12s" },
@@ -64,9 +63,6 @@ options = [
   { value = "30", label = "30s · Max" },
 ]
 
-# Server accepts a free-form string here (default "auto", output follows the
-# input image). Kept as text to mirror the live schema rather than inventing
-# an enum the endpoint does not declare.
 [params.aspect_ratio]
 label = "Aspect Ratio"
 type = "text"
@@ -95,3 +91,23 @@ type = "text"
 default = ""
 optional = true
 hidden = true
+
+[params.codec]
+label = "Codec"
+type = "select"
+default = "auto"
+optional = true
+options = [
+  { value = "auto", label = "auto · Default" },
+  { value = "H264", label = "H264" },
+  { value = "H265", label = "H265" },
+]
+description = "'auto' retains default video codec behaviour; 'H264' uses H.264; 'H265' uses H.265."
+
+[params.draft]
+label = "Draft"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Generate a draft preview at 480p, overriding resolution."

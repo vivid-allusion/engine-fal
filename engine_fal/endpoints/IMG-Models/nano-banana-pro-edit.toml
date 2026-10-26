@@ -13,6 +13,9 @@ note = "fal list price: $0.15 per image ($1.00 ≈ 7 runs). 4K charged at 2x; we
 [general]
 image_url_param = "image_urls"
 
+# Server inputs with no wizard widget. Checked against the live schema.
+# UNRENDERABLE: context history
+
 [params.aspect_ratio]
 label = "Aspect Ratio"
 type = "select"
@@ -20,16 +23,20 @@ default = "auto"
 optional = true
 options = [
   { value = "auto", label = "auto · Model decides" },
-  { value = "1:1",  label = "1:1 · Square" },
-  { value = "3:2",  label = "3:2 · Landscape" },
-  { value = "4:3",  label = "4:3 · Classic" },
-  { value = "5:4",  label = "5:4 · Landscape" },
-  { value = "16:9", label = "16:9 · Landscape · Standard" },
   { value = "21:9", label = "21:9 · Ultrawide · Cinematic" },
-  { value = "2:3",  label = "2:3 · Portrait" },
-  { value = "3:4",  label = "3:4 · Portrait" },
-  { value = "4:5",  label = "4:5 · Portrait" },
+  { value = "16:9", label = "16:9 · Landscape · Standard" },
+  { value = "3:2", label = "3:2 · Landscape" },
+  { value = "4:3", label = "4:3 · Classic" },
+  { value = "5:4", label = "5:4 · Landscape" },
+  { value = "1:1", label = "1:1 · Square" },
+  { value = "4:5", label = "4:5 · Portrait" },
+  { value = "3:4", label = "3:4 · Portrait" },
+  { value = "2:3", label = "2:3 · Portrait" },
   { value = "9:16", label = "9:16 · Vertical" },
+  { value = "4:1", label = "4:1 · Wide Panorama" },
+  { value = "1:4", label = "1:4 · Tall Vertical" },
+  { value = "8:1", label = "8:1 · Extreme Panorama" },
+  { value = "1:8", label = "1:8 · Extreme Vertical" },
 ]
 
 [params.resolution]
@@ -80,8 +87,8 @@ options = [
 label = "Enable Web Search"
 type = "boolean"
 default = false
+optional = true
 hidden = true
-description = "Allow the model to use the latest web information while editing."
 
 [params.system_prompt]
 label = "System Prompt"
@@ -109,3 +116,60 @@ type = "boolean"
 default = true
 optional = true
 hidden = true
+
+[params.include_thoughts]
+label = "Include Thoughts"
+type = "boolean"
+optional = true
+hidden = true
+description = "Whether to include thought summaries."
+
+[params.temperature]
+label = "Temperature"
+type = "number"
+optional = true
+min = 0
+max = 2
+hidden = true
+description = "Sampling temperature."
+
+[params.top_p]
+label = "Top P"
+type = "number"
+optional = true
+min = 0
+max = 1
+hidden = true
+description = "Nucleus sampling probability."
+
+[params.image_passthrough]
+label = "Image Passthrough"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Send reference images and return provider images without resizing or re-encoding, preserving transparency and metadata."
+
+[params.return_history]
+label = "Return History"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Return reusable native conversations with original image parts and provider thought signatures."
+
+[params.max_output_tokens]
+label = "Max Output Tokens"
+type = "integer"
+optional = true
+min = 1
+max = 32768
+hidden = true
+description = "Maximum output tokens for the generation."
+
+[params.thinking_level]
+label = "Thinking Level"
+type = "text"
+optional = true
+hidden = true
+description = "Thinking effort."

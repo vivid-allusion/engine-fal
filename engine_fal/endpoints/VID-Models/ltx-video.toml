@@ -10,28 +10,40 @@ base_cost = 0.05
 currency = "USD"
 note = "Fastest video model — real-time generation"
 
-[general]
-image_url_param = "image_url"
-duration_type = "seconds"
-duration_param_name = "duration"
-
-[params.aspect_ratio]
-label = "Aspect Ratio"
-type = "select"
-default = "16:9"
+[params.seed]
+label = "Random Seed"
+type = "integer"
 optional = true
-options = [
-  { value = "16:9", label = "16:9 · Landscape" },
-  { value = "9:16", label = "9:16 · Portrait" },
-  { value = "1:1",  label = "1:1 · Square" },
-]
+hidden = true
+description = "The seed to use for random number generation."
 
-[params.duration]
-label = "Duration"
-type = "select"
-default = "3"
-options = [
-  { value = "2", label = "2s · Very Short" },
-  { value = "3", label = "3s · Short" },
-  { value = "4", label = "4s · Standard" },
-]
+[params.num_inference_steps]
+label = "Inference Steps"
+type = "integer"
+default = 30
+optional = true
+min = 1
+max = 50
+description = "The number of inference steps to take."
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true
+description = "Authorized callers may set false to request relaxed screening."
+
+[params.guidance_scale]
+label = "Guidance Scale"
+type = "number"
+default = 3
+optional = true
+max = 10
+description = "The guidance scale to use."
+
+[params.negative_prompt]
+label = "Negative Prompt"
+type = "text"
+default = "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly"
+optional = true
+description = "The negative prompt to generate the video from."

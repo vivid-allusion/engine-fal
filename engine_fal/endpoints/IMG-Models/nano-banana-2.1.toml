@@ -92,8 +92,8 @@ options = [
 label = "Enable Web Search"
 type = "boolean"
 default = false
+optional = true
 hidden = true
-description = "Allow the model to use the latest web information while generating."
 
 [params.system_prompt]
 label = "System Prompt"

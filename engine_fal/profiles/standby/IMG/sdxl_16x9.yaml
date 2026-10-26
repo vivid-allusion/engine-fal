@@ -4,8 +4,8 @@ endpoint: fal-ai/stable-diffusion-v35-large
 media_type: image
 concurrency: 2
 parameters:
-  aspect_ratio: "16:9"
-  resolution: "1K"
+  image_size: "landscape_16_9"
+  output_format: "png"
   num_images: 1
 pricing:
   base_cost: 0.002

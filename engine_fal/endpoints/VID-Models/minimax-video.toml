@@ -10,27 +10,16 @@ base_cost = 0.15
 currency = "USD"
 note = "High quality — cinematic motion"
 
-[general]
-image_url_param = "image_url"
-duration_type = "seconds"
-duration_param_name = "duration"
-
-[params.aspect_ratio]
-label = "Aspect Ratio"
-type = "select"
-default = "16:9"
+[params.prompt_optimizer]
+label = "Prompt Optimizer"
+type = "boolean"
+default = true
 optional = true
-options = [
-  { value = "16:9", label = "16:9 · Landscape" },
-  { value = "9:16", label = "9:16 · Portrait" },
-  { value = "1:1",  label = "1:1 · Square" },
-]
+description = "Whether to use the model's prompt optimizer"
 
-[params.duration]
-label = "Duration"
-type = "select"
-default = "5"
-options = [
-  { value = "5",  label = "5s · Short" },
-  { value = "10", label = "10s · Long" },
-]
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true
+description = "Authorized callers may set false to request relaxed screening."

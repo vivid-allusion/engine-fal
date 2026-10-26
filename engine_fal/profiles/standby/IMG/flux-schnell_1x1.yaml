@@ -4,8 +4,8 @@ endpoint: fal-ai/flux/schnell
 media_type: image
 concurrency: 2
 parameters:
-  aspect_ratio: "1:1"
-  resolution: "1K"
+  image_size: "square_hd"
+  output_format: "png"
   num_images: 1
 pricing:
   base_cost: 0.003

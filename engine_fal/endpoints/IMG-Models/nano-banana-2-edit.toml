@@ -13,7 +13,9 @@ note = "fal list price: $0.08 per image ($1.00 ≈ 12 runs). 2K and 4K charged a
 [general]
 image_url_param = "image_urls"
 slots = ["video_url", "pdf_url", "audio_url"]
-slot_scalar = ["video_url", "pdf_url", "audio_url"]
+
+# Server inputs with no wizard widget. Checked against the live schema.
+# UNRENDERABLE: context history
 
 [params.aspect_ratio]
 label = "Aspect Ratio"
@@ -96,8 +98,8 @@ options = [
 label = "Enable Web Search"
 type = "boolean"
 default = false
+optional = true
 hidden = true
-description = "Allow the model to use the latest web information while editing."
 
 [params.system_prompt]
 label = "System Prompt"
@@ -125,3 +127,60 @@ type = "boolean"
 default = true
 optional = true
 hidden = true
+
+[params.max_output_tokens]
+label = "Max Output Tokens"
+type = "integer"
+optional = true
+min = 1
+max = 32768
+hidden = true
+description = "Maximum output tokens for the generation."
+
+[params.return_history]
+label = "Return History"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Return reusable native conversations with original image parts and provider thought signatures."
+
+[params.include_thoughts]
+label = "Include Thoughts"
+type = "boolean"
+optional = true
+hidden = true
+description = "Whether to include thought summaries."
+
+[params.enable_image_search]
+label = "Image Search"
+type = "boolean"
+default = false
+optional = true
+description = "Ground image generation with Google Image Search."
+
+[params.top_p]
+label = "Top P"
+type = "number"
+optional = true
+min = 0
+max = 1
+hidden = true
+description = "Nucleus sampling probability."
+
+[params.temperature]
+label = "Temperature"
+type = "number"
+optional = true
+min = 0
+max = 2
+hidden = true
+description = "Sampling temperature."
+
+[params.image_passthrough]
+label = "Image Passthrough"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Send reference images and return provider images without resizing or re-encoding, preserving transparency and metadata."

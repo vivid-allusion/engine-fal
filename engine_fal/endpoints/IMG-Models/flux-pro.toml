@@ -10,33 +10,6 @@ base_cost = 0.05
 currency = "USD"
 note = "Highest quality Flux variant"
 
-[params.aspect_ratio]
-label = "Aspect Ratio"
-type = "select"
-default = "16:9"
-optional = true
-options = [
-  { value = "1:1",   label = "1:1 · Square" },
-  { value = "2:3",   label = "2:3 · Portrait" },
-  { value = "3:2",   label = "3:2 · Landscape" },
-  { value = "4:3",   label = "4:3 · Classic" },
-  { value = "3:4",   label = "3:4 · Portrait" },
-  { value = "9:16",  label = "9:16 · Vertical" },
-  { value = "16:9",  label = "16:9 · Landscape · Standard" },
-  { value = "21:9",  label = "21:9 · Ultrawide" },
-]
-
-[params.resolution]
-label = "Resolution"
-type = "select"
-default = "1K"
-optional = true
-options = [
-  { value = "1K", label = "1K (1024px) · Standard" },
-  { value = "2K", label = "2K (2048px) · High Quality" },
-  { value = "4K", label = "4K (4096px) · Maximum" },
-]
-
 [params.num_images]
 label = "Number of Images"
 type = "integer"
@@ -48,5 +21,78 @@ max = 4
 label = "Guidance Scale"
 type = "number"
 default = 3.5
-min = 1.0
-max = 10.0
+optional = true
+min = 1
+max = 20
+
+[params.output_format]
+label = "Output Format"
+type = "select"
+default = "jpeg"
+optional = true
+options = [
+  { value = "jpeg", label = "JPEG · Default" },
+  { value = "png", label = "PNG · Lossless" },
+]
+description = "The format of the generated image."
+
+[params.image_size]
+label = "Image Size"
+type = "select"
+default = "landscape_4_3"
+optional = true
+options = [
+  { value = "square_hd", label = "square_hd · Square HD" },
+  { value = "square", label = "square · Square" },
+  { value = "portrait_4_3", label = "portrait_4_3 · 3:4 Portrait" },
+  { value = "portrait_16_9", label = "portrait_16_9 · 9:16 Portrait" },
+  { value = "landscape_4_3", label = "landscape_4_3 · 4:3 Landscape · Default" },
+  { value = "landscape_16_9", label = "landscape_16_9 · 16:9 Landscape" },
+]
+description = "The size of the generated image."
+
+[params.enhance_prompt]
+label = "Enhance Prompt"
+type = "boolean"
+default = false
+optional = true
+description = "Whether to enhance the prompt for better results."
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+description = "The same seed and the same prompt given to the same version of the model will output the same image every time."
+
+[params.sync_mode]
+label = "Sync Mode"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "If `True`, the media will be returned as a data URI and the output data won't be available in the request history."
+
+[params.safety_tolerance]
+label = "Safety Tolerance"
+type = "select"
+default = "2"
+optional = true
+options = [
+  { value = "1", label = "1 · Strictest" },
+  { value = "2", label = "2 · Default" },
+  { value = "3", label = "3" },
+  { value = "4", label = "4 · Default" },
+  { value = "5", label = "5" },
+  { value = "6", label = "6 · Most permissive" },
+]
+description = "The safety tolerance level for the generated image."
+
+[params.num_inference_steps]
+label = "Inference Steps"
+type = "integer"
+default = 28
+optional = true
+min = 1
+max = 50
+description = "The number of inference steps to perform."

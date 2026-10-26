@@ -10,25 +10,127 @@ base_cost = 0.04
 currency = "USD"
 note = "Design and branding specialist"
 
-[params.aspect_ratio]
-label = "Aspect Ratio"
+# Server inputs with no wizard widget. Checked against the live schema.
+# UNRENDERABLE: colors
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = false
+optional = true
+description = "If set to true, the safety checker will be enabled."
+
+[params.image_size]
+label = "Image Size"
 type = "select"
-default = "1:1"
+default = "square_hd"
 optional = true
 options = [
-  { value = "1:1",   label = "1:1 · Square" },
-  { value = "2:3",   label = "2:3 · Portrait" },
-  { value = "3:2",   label = "3:2 · Landscape" },
-  { value = "9:16",  label = "9:16 · Vertical" },
-  { value = "16:9",  label = "16:9 · Landscape" },
+  { value = "square_hd", label = "square_hd · Square HD · Default" },
+  { value = "square", label = "square · Square" },
+  { value = "portrait_4_3", label = "portrait_4_3 · 3:4 Portrait" },
+  { value = "portrait_16_9", label = "portrait_16_9 · 9:16 Portrait" },
+  { value = "landscape_4_3", label = "landscape_4_3 · 4:3 Landscape" },
+  { value = "landscape_16_9", label = "landscape_16_9 · 16:9 Landscape" },
 ]
 
-[params.resolution]
-label = "Resolution"
+[params.style]
+label = "Style"
 type = "select"
-default = "1K"
+default = "realistic_image"
 optional = true
 options = [
-  { value = "1K", label = "1K · Standard" },
-  { value = "2K", label = "2K · High Quality" },
+  { value = "any", label = "any · Model decides" },
+  { value = "realistic_image", label = "realistic image · Default" },
+  { value = "digital_illustration", label = "digital illustration" },
+  { value = "vector_illustration", label = "vector illustration" },
+  { value = "realistic_image/b_and_w", label = "realistic image/b and w" },
+  { value = "realistic_image/hard_flash", label = "realistic image/hard flash" },
+  { value = "realistic_image/hdr", label = "realistic image/hdr" },
+  { value = "realistic_image/natural_light", label = "realistic image/natural light" },
+  { value = "realistic_image/studio_portrait", label = "realistic image/studio portrait" },
+  { value = "realistic_image/enterprise", label = "realistic image/enterprise" },
+  { value = "realistic_image/motion_blur", label = "realistic image/motion blur" },
+  { value = "realistic_image/evening_light", label = "realistic image/evening light" },
+  { value = "realistic_image/faded_nostalgia", label = "realistic image/faded nostalgia" },
+  { value = "realistic_image/forest_life", label = "realistic image/forest life" },
+  { value = "realistic_image/mystic_naturalism", label = "realistic image/mystic naturalism" },
+  { value = "realistic_image/natural_tones", label = "realistic image/natural tones" },
+  { value = "realistic_image/organic_calm", label = "realistic image/organic calm" },
+  { value = "realistic_image/real_life_glow", label = "realistic image/real life glow" },
+  { value = "realistic_image/retro_realism", label = "realistic image/retro realism" },
+  { value = "realistic_image/retro_snapshot", label = "realistic image/retro snapshot" },
+  { value = "realistic_image/urban_drama", label = "realistic image/urban drama" },
+  { value = "realistic_image/village_realism", label = "realistic image/village realism" },
+  { value = "realistic_image/warm_folk", label = "realistic image/warm folk" },
+  { value = "digital_illustration/pixel_art", label = "digital illustration/pixel art" },
+  { value = "digital_illustration/hand_drawn", label = "digital illustration/hand drawn" },
+  { value = "digital_illustration/grain", label = "digital illustration/grain" },
+  { value = "digital_illustration/infantile_sketch", label = "digital illustration/infantile sketch" },
+  { value = "digital_illustration/2d_art_poster", label = "digital illustration/2d art poster" },
+  { value = "digital_illustration/handmade_3d", label = "digital illustration/handmade 3d" },
+  { value = "digital_illustration/hand_drawn_outline", label = "digital illustration/hand drawn outline" },
+  { value = "digital_illustration/engraving_color", label = "digital illustration/engraving color" },
+  { value = "digital_illustration/2d_art_poster_2", label = "digital illustration/2d art poster 2" },
+  { value = "digital_illustration/antiquarian", label = "digital illustration/antiquarian" },
+  { value = "digital_illustration/bold_fantasy", label = "digital illustration/bold fantasy" },
+  { value = "digital_illustration/child_book", label = "digital illustration/child book" },
+  { value = "digital_illustration/child_books", label = "digital illustration/child books" },
+  { value = "digital_illustration/cover", label = "digital illustration/cover" },
+  { value = "digital_illustration/crosshatch", label = "digital illustration/crosshatch" },
+  { value = "digital_illustration/digital_engraving", label = "digital illustration/digital engraving" },
+  { value = "digital_illustration/expressionism", label = "digital illustration/expressionism" },
+  { value = "digital_illustration/freehand_details", label = "digital illustration/freehand details" },
+  { value = "digital_illustration/grain_20", label = "digital illustration/grain 20" },
+  { value = "digital_illustration/graphic_intensity", label = "digital illustration/graphic intensity" },
+  { value = "digital_illustration/hard_comics", label = "digital illustration/hard comics" },
+  { value = "digital_illustration/long_shadow", label = "digital illustration/long shadow" },
+  { value = "digital_illustration/modern_folk", label = "digital illustration/modern folk" },
+  { value = "digital_illustration/multicolor", label = "digital illustration/multicolor" },
+  { value = "digital_illustration/neon_calm", label = "digital illustration/neon calm" },
+  { value = "digital_illustration/noir", label = "digital illustration/noir" },
+  { value = "digital_illustration/nostalgic_pastel", label = "digital illustration/nostalgic pastel" },
+  { value = "digital_illustration/outline_details", label = "digital illustration/outline details" },
+  { value = "digital_illustration/pastel_gradient", label = "digital illustration/pastel gradient" },
+  { value = "digital_illustration/pastel_sketch", label = "digital illustration/pastel sketch" },
+  { value = "digital_illustration/pop_art", label = "digital illustration/pop art" },
+  { value = "digital_illustration/pop_renaissance", label = "digital illustration/pop renaissance" },
+  { value = "digital_illustration/street_art", label = "digital illustration/street art" },
+  { value = "digital_illustration/tablet_sketch", label = "digital illustration/tablet sketch" },
+  { value = "digital_illustration/urban_glow", label = "digital illustration/urban glow" },
+  { value = "digital_illustration/urban_sketching", label = "digital illustration/urban sketching" },
+  { value = "digital_illustration/vanilla_dreams", label = "digital illustration/vanilla dreams" },
+  { value = "digital_illustration/young_adult_book", label = "digital illustration/young adult book" },
+  { value = "digital_illustration/young_adult_book_2", label = "digital illustration/young adult book 2" },
+  { value = "vector_illustration/bold_stroke", label = "vector illustration/bold stroke" },
+  { value = "vector_illustration/chemistry", label = "vector illustration/chemistry" },
+  { value = "vector_illustration/colored_stencil", label = "vector illustration/colored stencil" },
+  { value = "vector_illustration/contour_pop_art", label = "vector illustration/contour pop art" },
+  { value = "vector_illustration/cosmics", label = "vector illustration/cosmics" },
+  { value = "vector_illustration/cutout", label = "vector illustration/cutout" },
+  { value = "vector_illustration/depressive", label = "vector illustration/depressive" },
+  { value = "vector_illustration/editorial", label = "vector illustration/editorial" },
+  { value = "vector_illustration/emotional_flat", label = "vector illustration/emotional flat" },
+  { value = "vector_illustration/infographical", label = "vector illustration/infographical" },
+  { value = "vector_illustration/marker_outline", label = "vector illustration/marker outline" },
+  { value = "vector_illustration/mosaic", label = "vector illustration/mosaic" },
+  { value = "vector_illustration/naivector", label = "vector illustration/naivector" },
+  { value = "vector_illustration/roundish_flat", label = "vector illustration/roundish flat" },
+  { value = "vector_illustration/segmented_colors", label = "vector illustration/segmented colors" },
+  { value = "vector_illustration/sharp_contrast", label = "vector illustration/sharp contrast" },
+  { value = "vector_illustration/thin", label = "vector illustration/thin" },
+  { value = "vector_illustration/vector_photo", label = "vector illustration/vector photo" },
+  { value = "vector_illustration/vivid_shapes", label = "vector illustration/vivid shapes" },
+  { value = "vector_illustration/engraving", label = "vector illustration/engraving" },
+  { value = "vector_illustration/line_art", label = "vector illustration/line art" },
+  { value = "vector_illustration/line_circuit", label = "vector illustration/line circuit" },
+  { value = "vector_illustration/linocut", label = "vector illustration/linocut" },
 ]
+description = "The style of the generated images."
+
+[params.style_id]
+label = "Style ID"
+type = "text"
+optional = true
+hidden = true
+description = "The ID of the custom style reference (optional)"

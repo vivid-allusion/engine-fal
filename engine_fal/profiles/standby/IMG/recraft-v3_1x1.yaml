@@ -4,8 +4,7 @@ endpoint: fal-ai/recraft-v3
 media_type: image
 concurrency: 2
 parameters:
-  aspect_ratio: "1:1"
-  resolution: "1K"
+  image_size: "square_hd"
 pricing:
   base_cost: 0.04
   currency: USD

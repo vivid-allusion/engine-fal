@@ -13,7 +13,6 @@ note = "Token-billed (per 1M): text/thinking $1.764 in, $8.823 out; image $1.764
 [general]
 image_url_param = "image_urls"
 slots = ["video_url", "pdf_url"]
-slot_scalar = ["video_url", "pdf_url"]
 
 [params.aspect_ratio]
 label = "Aspect Ratio"
@@ -97,8 +96,8 @@ options = [
 label = "Enable Web Search"
 type = "boolean"
 default = false
+optional = true
 hidden = true
-description = "Allow the model to use the latest web information while editing."
 
 [params.system_prompt]
 label = "System Prompt"
