@@ -97,7 +97,8 @@ before committing any TOML change (no API key needed):
 python scripts/check_schema_sync.py
 ```
 
-Exit code 1 means drift: fix the TOML, do not merge.
+Exit code 1 means drift: fix the TOML, do not merge. Exit code 2 means fal
+could not be reached for that endpoint — re-run; it is not a verdict.
 
 ## Contract
 

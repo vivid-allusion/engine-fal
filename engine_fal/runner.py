@@ -7,15 +7,17 @@ reuses this engine's existing machinery verbatim (`_build_fal_input`,
 retry, backoff and circuit-breaker semantics as the sequential loop.
 Results are written by input index; a failing item never disturbs jobs
 still in flight; once a fatal error or the breaker ends the batch, no
-queued item is submitted.
+queued item is submitted. Every failed item writes the same verbose
+`_ERROR.log` the sequential loop writes.
 """
 
 import concurrent.futures
 import threading
 import time
-from datetime import datetime
+import traceback
 
 from .datatypes import OutputFile
+from .output_handler import _output_stem, _write_error_log
 
 
 class BatchState:
@@ -51,36 +53,60 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
     media_type = engine._profile.get("media_type", "")
     rel_dir = str(item.metadata.get("relative_dir", "") or "")
     dest_dir = engine._output_dir / rel_dir if rel_dir else engine._output_dir
-    ts = engine._now_string()
+    base = _output_stem(stem, engine._now_string())
     ext = engine._default_extension(media_type)
-    expected = dest_dir / f"{ts}-{stem}-{idx}{ext}"
+    expected = dest_dir / f"{base}-{idx}{ext}"
+
+    def error_log(stage: str, error: str, payload: dict | None, tb: str = "n/a"):
+        return _write_error_log(
+            dest_dir,
+            base,
+            idx,
+            platform=engine.PLATFORM,
+            item=item,
+            current=current,
+            total=total,
+            expected=expected,
+            profile=engine._profile,
+            prompt=prompt,
+            stage=stage,
+            error=error,
+            traceback_text=tb,
+            api_payload=payload,
+        )
 
     engine._emit(f"{prefix} 📡 Calling {engine.PROVIDER_NAME} API...")
     prompt = f"{engine._prefix}{item.prompt}{engine._suffix}".strip()
     if not prompt:
+        reason = "Empty prompt after applying prefix/suffix"
+        log_path = error_log("empty_prompt", reason, None)
         return [
             OutputFile(
                 source_path=item.path,
                 status="error",
-                error_msg="Empty prompt after applying prefix/suffix",
+                error_msg=reason,
                 media_type=media_type,
                 expected_path=expected,
+                metadata=engine._error_log_metadata(log_path),
             )
         ]
 
     engine._emit(f"{prefix} 📝 Markdown: {item.path.name}")
 
     fal_input: dict | None = None
+    stage = "build_input"
     try:
         fal_input = engine._build_fal_input(
             dict(engine._profile.get("parameters", {})), prompt, item, media_type
         )
+        stage = "provider_call"
         raw_result = engine._request_with_retry(
             fal_client, engine._profile["endpoint"], fal_input, prefix
         )
         engine._emit(f"{prefix} ✅ Response received")
         engine._emit(f"{prefix} 📦 Payload: {fal_input}")
 
+        stage = "save"
         raw_output = engine._normalize_result(raw_result, media_type)
         saved = engine._save_results(
             raw_output,
@@ -94,13 +120,16 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
             fal_input,
         )
         if not saved:
+            reason = "No output returned from fal.ai"
+            log_path = error_log("no_output", reason, fal_input)
             return [
                 OutputFile(
                     source_path=item.path,
                     status="error",
-                    error_msg="No output returned from fal.ai",
+                    error_msg=reason,
                     media_type=media_type,
                     expected_path=expected,
+                    metadata=engine._error_log_metadata(log_path),
                 )
             ]
         state.note_success()
@@ -122,12 +151,16 @@ def run_item(engine, fal_client, item, idx, total, state) -> list[OutputFile]:
             total=total,
             api_payload=fal_input,
         )
+        log_path = error_log(
+            stage, f"{type(exc).__name__}: {exc}", fal_input, traceback.format_exc()
+        )
         output = OutputFile(
             source_path=item.path,
             status="error",
             error_msg=str(exc),
             media_type=media_type,
             expected_path=expected,
+            metadata=engine._error_log_metadata(log_path),
         )
         if engine._is_fatal(exc):
             engine._emit(

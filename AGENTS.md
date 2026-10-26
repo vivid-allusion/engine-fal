@@ -73,8 +73,10 @@ The rules, hard:
    python scripts/check_schema_sync.py --cache-dir DIR   # pinned/offline
    ```
 
-   Exit code 1 = drift = **do not merge**. A clean run is a precondition for
-   shipping endpoint TOMLs. The offline logic is unit-tested
+   Exit code 1 = drift = **do not merge**; exit code 2 = an endpoint could
+   not be fetched (provider blip — re-run, not a verdict); exit code 0 = clean.
+   A model the API reports as gone is drift, never a fetch blip. A clean run is
+   a precondition for shipping endpoint TOMLs. The offline logic is unit-tested
    (`tests/test_schema_sync.py`) so regressions in the checker itself are
    caught without network access.
 6. **A deprecated endpoint leaves the catalog.** fal stopped publishing an
@@ -177,6 +179,18 @@ Full contract: `~/Nextcloud/00-DEVELOPMENT/MISC_DEV_TOOLS/studiolot/docs/archite
     endpoint TOML. The 2026-10-26 drift (`aspect_ratio` on flux-pro) would
     have been caught by one. PyYAML is not on the dev box's system python, so
     the gate needs a parser decision first.
+- 2026-10-15 — Always-on per-item error logs: any failed item now writes a
+  verbose `<base>-<idx>_ERROR.log` beside the media's would-be destination —
+  provider exceptions, empty-prompt skips, "no output returned" responses, and
+  save/download/`.part`-reveal failures — independent of Generator logging
+  flags. The log holds when/item/source/dest/expected/platform/endpoint, the
+  profile dict and exact api payload as pretty JSON, duration (raw/effective/
+  fps), media (primary URLs + every reference slot), the exact final prompt,
+  error stage (`build_input`/`provider_call`/`save`/`no_output`/`empty_prompt`),
+  error text, full traceback (or n/a), and the office/MEMORY note. The written
+  path is recorded on the error `OutputFile` as `metadata["error_log"]` for the
+  Generator's run-level summary. Secrets are masked (`_mask_secrets`);
+  environment data is never dumped.
 - 2026-10-10 — Nano Banana 2.1 catalog added to the IMG shelf
   - Two endpoint TOMLs mirror the live fal OpenAPI schemas (verified, 0 drift):
     `nano-banana-2.1` and `nano-banana-2.1/edit`. Both are token-billed — text

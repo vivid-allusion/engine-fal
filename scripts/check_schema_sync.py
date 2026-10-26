@@ -10,7 +10,10 @@ Run:
     python scripts/check_schema_sync.py                  # live (no key needed)
     python scripts/check_schema_sync.py --cache-dir DIR   # pinned/offline run
 
-Exit code 1 when any endpoint TOML drifts from its live schema.
+Exit codes: 0 = clean, 1 = catalog drift (do not merge), 2 = an endpoint
+could not be fetched (provider/network problem — re-run, it is not a verdict
+on the catalog). A model the API reports as gone (HTTP 404, no model, no
+schema) is drift, not a fetch problem: a dead row must fail the gate.
 
 The fal catalog is readable without a key: the models API returns each
 endpoint's queue OpenAPI document with ``expand=openapi-3.0``. Requests are
@@ -323,14 +326,21 @@ def check_toml(toml_path: Path, model: ModelInput) -> list[str]:
     return errors
 
 
-def load_schema(endpoint: str, cache_dir: Path | None) -> tuple[dict, str]:
-    """Fetch (or read from cache) a model's OpenAPI document and status."""
+def load_schema(
+    endpoint: str, cache_dir: Path | None
+) -> tuple[dict, str, bool]:
+    """Fetch (or read from cache) a model's OpenAPI document and status.
+
+    The third value is True when the failure was the provider being
+    unreachable rather than the endpoint being gone: callers must not report
+    a network blip as catalog drift.
+    """
     if cache_dir is not None:
         cached = cache_dir / (endpoint.replace("/", "__") + ".json")
         if not cached.is_file():
-            return {}, f"no cached schema at {cached}"
+            return {}, f"no cached schema at {cached}", False
         payload = json.loads(cached.read_text())
-        return payload.get("openapi") or {}, payload.get("status", "active")
+        return payload.get("openapi") or {}, payload.get("status", "active"), False
     params = urllib.parse.urlencode({"endpoint_id": endpoint, "expand": "openapi-3.0"})
     request = urllib.request.Request(
         f"{MODELS_API}?{params}", headers={"User-Agent": USER_AGENT}
@@ -344,13 +354,17 @@ def load_schema(endpoint: str, cache_dir: Path | None) -> tuple[dict, str]:
                 if attempt + 1 < RETRY_ATTEMPTS:
                     time.sleep(1.5 * (attempt + 1))
                     continue
-                return {}, "the models API returned no model"
+                return {}, "the models API returned no model", False
             model = models[0]
             time.sleep(REQUEST_SPACING)
             status = str((model.get("metadata") or {}).get("status") or "")
             if not model.get("openapi"):
-                return {}, f"the model is {status or 'unlisted'} and publishes no OpenAPI schema"
-            return model["openapi"], status
+                return (
+                    {},
+                    f"the model is {status or 'unlisted'} and publishes no OpenAPI schema",
+                    False,
+                )
+            return model["openapi"], status, False
         except urllib.error.HTTPError as exc:
             # 429 and 5xx are the provider's transient answers, not drift; a
             # 404 (or any other 4xx) means the endpoint itself is gone.
@@ -358,14 +372,14 @@ def load_schema(endpoint: str, cache_dir: Path | None) -> tuple[dict, str]:
                 if attempt + 1 < RETRY_ATTEMPTS:
                     time.sleep(2.0 * (attempt + 1))
                     continue
-            return {}, f"HTTP {exc.code} from the models API"
+            return {}, f"HTTP {exc.code} from the models API", exc.code >= 500
         except (urllib.error.URLError, TimeoutError) as exc:
             reason = getattr(exc, "reason", exc)
             if attempt + 1 < RETRY_ATTEMPTS:
                 time.sleep(1.5 * (attempt + 1))
                 continue
-            return {}, f"network error: {reason}"
-    return {}, "rate limited by the models API"
+            return {}, f"network error: {reason}", True
+    return {}, "rate limited by the models API", True
 
 
 def read_endpoints() -> list[tuple[Path, dict]]:
@@ -394,16 +408,21 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     failures = 0
+    unreachable = 0
     checked = 0
     for toml_path, data in endpoints:
         endpoint = str(data.get("endpoint") or "")
         if args.endpoint and endpoint != args.endpoint:
             continue
         checked += 1
-        schema, status = load_schema(endpoint, args.cache_dir)
+        schema, status, blip = load_schema(endpoint, args.cache_dir)
         if not schema:
-            print(f"FAIL {toml_path.name} ({endpoint}): {status}")
-            failures += 1
+            if blip:
+                print(f"RETRY {toml_path.name} ({endpoint}): {status} — not a verdict")
+                unreachable += 1
+            else:
+                print(f"FAIL {toml_path.name} ({endpoint}): {status}")
+                failures += 1
             continue
         if args.cache_dir is None and status and status != "active":
             print(f"FAIL {toml_path.name} ({endpoint}): status is {status!r}, not 'active'")
@@ -420,7 +439,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"OK   {toml_path.name} ({endpoint}) — {len(model.props)} server inputs")
 
     print(f"\n{checked} endpoint(s) checked, {failures} drifted")
-    return 1 if failures else 0
+    if unreachable:
+        print(
+            f"{unreachable} endpoint(s) could not be fetched — re-run; "
+            "that is the provider, not the catalog",
+            file=sys.stderr,
+        )
+    if failures:
+        return 1
+    return 2 if unreachable else 0
 
 
 if __name__ == "__main__":

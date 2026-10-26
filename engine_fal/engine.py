@@ -1,12 +1,18 @@
 import importlib
 import time
+import traceback
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
 from .datatypes import EngineError, InputFile, OutputFile, ProgressEvent
 from .input_builder import FalInputBuilder
-from .output_handler import FalOutputHandler
+from .output_handler import (
+    FalOutputHandler,
+    _mask_secrets,  # noqa: F401 - re-exported for call sites/tests
+    _output_stem,
+    _write_error_log,
+)
 from .retry_policy import RetryPolicy
 
 
@@ -38,15 +44,15 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
 
         import fal_client
 
-        endpoint = self._profile["endpoint"]
-        params = dict(self._profile.get("parameters", {}))
-        media_type = self._profile.get("media_type", "")
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-
         if self._concurrency > 1:
             from . import runner
 
             return runner.run_batch(self, inputs)
+
+        endpoint = self._profile["endpoint"]
+        params = dict(self._profile.get("parameters", {}))
+        media_type = self._profile.get("media_type", "")
+        self._output_dir.mkdir(parents=True, exist_ok=True)
 
         results: list[OutputFile] = []
         total = len(inputs)
@@ -59,9 +65,9 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
             prefix = f"[{current}/{total}]"
             rel_dir = str(item.metadata.get("relative_dir", "") or "")
             dest_dir = self._output_dir / rel_dir if rel_dir else self._output_dir
-            ts = self._now_string()
+            base = _output_stem(stem, self._now_string())
             ext = self._default_extension(media_type)
-            expected = dest_dir / f"{ts}-{stem}-{idx}{ext}"
+            expected = dest_dir / f"{base}-{idx}{ext}"
 
             delay = float(self._profile.get("delay_between_requests", 0.0))
             if idx > 0 and delay > 0:
@@ -70,12 +76,30 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
             self._emit(f"{prefix} 📡 Calling Fal.ai API...")
             prompt = f"{self._prefix}{item.prompt}{self._suffix}".strip()
             if not prompt:
+                reason = "Empty prompt after applying prefix/suffix"
+                log_path = _write_error_log(
+                    dest_dir,
+                    base,
+                    idx,
+                    platform=self.PLATFORM,
+                    item=item,
+                    current=current,
+                    total=total,
+                    expected=expected,
+                    profile=self._profile,
+                    prompt=prompt,
+                    stage="empty_prompt",
+                    error=reason,
+                    traceback_text="n/a",
+                    api_payload=None,
+                )
                 output = OutputFile(
                     source_path=item.path,
                     status="error",
-                    error_msg="Empty prompt after applying prefix/suffix",
+                    error_msg=reason,
                     media_type=media_type,
                     expected_path=expected,
+                    metadata=self._error_log_metadata(log_path),
                 )
                 results.append(output)
                 continue
@@ -83,14 +107,17 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
             self._emit(f"{prefix} 📝 Markdown: {item.path.name}")
 
             fal_input: dict | None = None
+            stage = "build_input"
             try:
                 fal_input = self._build_fal_input(params, prompt, item, media_type)
+                stage = "provider_call"
                 raw_result = self._request_with_retry(
                     fal_client, endpoint, fal_input, prefix
                 )
                 self._emit(f"{prefix} ✅ Response received")
                 self._emit(f"{prefix} 📦 Payload: {fal_input}")
 
+                stage = "save"
                 raw_output = self._normalize_result(raw_result, media_type)
                 saved = self._save_results(
                     raw_output,
@@ -104,12 +131,30 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
                     fal_input,
                 )
                 if not saved:
+                    reason = "No output returned from fal.ai"
+                    log_path = _write_error_log(
+                        dest_dir,
+                        base,
+                        idx,
+                        platform=self.PLATFORM,
+                        item=item,
+                        current=current,
+                        total=total,
+                        expected=expected,
+                        profile=self._profile,
+                        prompt=prompt,
+                        stage="no_output",
+                        error=reason,
+                        traceback_text="n/a",
+                        api_payload=fal_input,
+                    )
                     output = OutputFile(
                         source_path=item.path,
                         status="error",
-                        error_msg="No output returned from fal.ai",
+                        error_msg=reason,
                         media_type=media_type,
                         expected_path=expected,
+                        metadata=self._error_log_metadata(log_path),
                     )
                 else:
                     consecutive_conflicts = 0
@@ -133,12 +178,29 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
                     total=total,
                     api_payload=fal_input,
                 )
+                log_path = _write_error_log(
+                    dest_dir,
+                    base,
+                    idx,
+                    platform=self.PLATFORM,
+                    item=item,
+                    current=current,
+                    total=total,
+                    expected=expected,
+                    profile=self._profile,
+                    prompt=prompt,
+                    stage=stage,
+                    error=f"{type(exc).__name__}: {exc}",
+                    traceback_text=traceback.format_exc(),
+                    api_payload=fal_input,
+                )
                 output = OutputFile(
                     source_path=item.path,
                     status="error",
                     error_msg=str(exc),
                     media_type=media_type,
                     expected_path=expected,
+                    metadata=self._error_log_metadata(log_path),
                 )
                 # A billing/auth failure will reject every remaining item —
                 # stop the batch instead of churning through all of them.
@@ -193,6 +255,10 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
             raise EngineError(
                 f"{self.API_KEY_ENV_VAR} not set in environment or .env file"
             )
+
+    @staticmethod
+    def _error_log_metadata(log_path: Path | None) -> dict:
+        return {"error_log": str(log_path)} if log_path else {}
 
     def _now_string(self) -> str:
         return datetime.now().strftime("%y%m%d_%H%M%S")
