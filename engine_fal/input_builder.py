@@ -26,7 +26,12 @@ class FalInputBuilder:
 
         fal_input["prompt"] = prompt
         ref_key = self._reference_key()
-        if item.reference_urls:
+        end_key = self._profile.get("end_image_param")
+        if ref_key == "reference_image_urls":
+            fal_input.update(self._split_reference_media(item.reference_urls))
+        elif end_key and len(item.reference_urls) == 2:
+            fal_input[ref_key], fal_input[end_key] = item.reference_urls
+        elif item.reference_urls:
             if self._profile.get("reference_param_multi", False):
                 fal_input[ref_key] = list(item.reference_urls)
             else:
@@ -44,6 +49,20 @@ class FalInputBuilder:
             fal_input[key] = self._coerce_param_value(key, duration, props)
 
         return fal_input
+
+    @staticmethod
+    def _split_reference_media(urls: list[str]) -> dict[str, list[str]]:
+        """Sort reference links into fal's picture, video and audio arrays by file type."""
+        kinds = {
+            "reference_video_urls": (".mp4", ".mov"),
+            "reference_audio_urls": (".mp3", ".wav"),
+        }
+        out: dict[str, list[str]] = {}
+        for url in urls:
+            path = urllib.parse.urlparse(url).path.lower()
+            key = next((k for k, exts in kinds.items() if path.endswith(exts)), "reference_image_urls")
+            out.setdefault(key, []).append(url)
+        return out
 
     def _coerce_media_value(self, key: str, urls: list[str]) -> str | list[str]:
         """Shape URLs for a media parameter against the model's schema.

@@ -1,0 +1,72 @@
+id = "h3-txt"
+label = "MiniMax H3 · Text to Video"
+category = "VID"
+platform = "fal"
+endpoint = "minimax/h3/text-to-video"
+description = "MiniMax H3 text-to-video. 5-15s clips from 480P up to 4K with fast, balanced or quality prompt expansion."
+
+[general]
+slots = ["target_audio_url"]
+duration_type = "seconds"
+duration_param_name = "duration"
+
+[params.aspect_ratio]
+label = "Aspect Ratio"
+type = "select"
+default = "16:9"
+optional = true
+options = [
+  { value = "21:9", label = "21:9 · Ultrawide" },
+  { value = "16:9", label = "16:9 · Landscape" },
+  { value = "4:3", label = "4:3 · Classic" },
+  { value = "1:1", label = "1:1 · Square" },
+  { value = "3:4", label = "3:4 · Portrait" },
+  { value = "9:16", label = "9:16 · Vertical" },
+]
+
+
+[params.duration]
+label = "Duration"
+type = "integer"
+default = 5
+optional = true
+min = 5
+max = 15
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "2K"
+optional = true
+options = [
+  { value = "480P", label = "480P · Fastest" },
+  { value = "768P", label = "768P · Standard" },
+  { value = "2K",   label = "2K · High" },
+  { value = "4K",   label = "4K · Highest" },
+]
+
+[params.prompt_expansion_mode]
+label = "Prompt Expansion"
+type = "text"
+default = "balanced"
+note = "Documented values: disabled, fast, balanced, quality."
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+
+[params.sync_mode]
+label = "Sync Mode"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+description = "Return the generated video as base64 instead of a CDN URL."

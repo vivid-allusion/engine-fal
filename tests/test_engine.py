@@ -1571,3 +1571,36 @@ class TestImports:
         assert ProgressEvent is not None
         assert EngineError is not None
         assert callable(list_standby_profiles)
+
+
+class TestMiniMaxH3Media:
+    def _build(self, general, urls):
+        eng = Engine({"endpoint": "minimax/h3/x", **general}, "/tmp/out")
+        eng._input_props_cache = {"image_url": {"type": "string"}}
+        item = InputFile(path=Path("s.md"), prompt="p", reference_urls=urls)
+        return eng._build_fal_input({}, "p", item, "video")
+
+    def test_image_second_picture_is_end_frame(self):
+        g = {"image_url_param": "image_url", "end_image_param": "end_image_url"}
+        out = self._build(g, ["http://x/a.png", "http://x/b.jpg"])
+        assert out["image_url"] == "http://x/a.png"
+        assert out["end_image_url"] == "http://x/b.jpg"
+
+    def test_image_single_picture(self):
+        g = {"image_url_param": "image_url", "end_image_param": "end_image_url"}
+        out = self._build(g, ["http://x/a.png"])
+        assert out["image_url"] == "http://x/a.png"
+        assert "end_image_url" not in out
+
+    def test_reference_splits_by_file_type(self):
+        out = self._build(
+            {"image_url_param": "reference_image_urls"},
+            ["http://x/a.png", "http://x/m.MOV?t=1", "http://x/s.wav", "http://x/b.webp"],
+        )
+        assert out["reference_image_urls"] == ["http://x/a.png", "http://x/b.webp"]
+        assert out["reference_video_urls"] == ["http://x/m.MOV?t=1"]
+        assert out["reference_audio_urls"] == ["http://x/s.wav"]
+
+    def test_reference_sound_only_sends_no_pictures(self):
+        out = self._build({"image_url_param": "reference_image_urls"}, ["http://x/s.mp3"])
+        assert "reference_image_urls" not in out
