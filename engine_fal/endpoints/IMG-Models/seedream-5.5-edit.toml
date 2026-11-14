@@ -1,0 +1,80 @@
+id = "seedream-5.5-edit"
+label = "Seedream 5.5 · Edit"
+category = "IMG"
+platform = "fal"
+endpoint = "bytedance/seedream/v5.5/edit"
+description = "ByteDance Seedream 5.5 image editing on fal — edits up to 10 reference images from a prompt."
+
+[pricing]
+base_cost = 0.03
+currency = "USD"
+note = "fal list price per output image: $0.03 at 1K/1.5K, $0.0405 at 2K, plus $0.012 per input image."
+
+[general]
+image_url_param = "image_urls"
+
+[params.image_size]
+label = "Image Size"
+type = "select"
+default = "auto_2K"
+optional = true
+options = [
+  { value = "square_hd", label = "Square HD" },
+  { value = "square", label = "Square" },
+  { value = "portrait_4_3", label = "Portrait 4:3" },
+  { value = "portrait_16_9", label = "Portrait 16:9" },
+  { value = "landscape_4_3", label = "Landscape 4:3" },
+  { value = "landscape_16_9", label = "Landscape 16:9" },
+  { value = "auto_1K", label = "Auto 1K" },
+  { value = "auto_1.5K", label = "Auto 1.5K" },
+  { value = "auto_2K", label = "Auto 2K" },
+]
+
+[params.num_images]
+label = "Number of Images"
+type = "integer"
+default = 1
+min = 1
+max = 6
+
+[params.output_format]
+label = "Output Format"
+type = "select"
+default = "png"
+optional = true
+options = [
+  { value = "png",  label = "PNG · Lossless" },
+  { value = "jpeg", label = "JPEG" },
+]
+
+[params.background]
+label = "Background"
+type = "select"
+default = "auto"
+optional = true
+options = [
+  { value = "auto", label = "Auto · Model decides" },
+  { value = "opaque", label = "Opaque" },
+  { value = "transparent", label = "Transparent · PNG only" },
+]
+
+[params.enable_safety_checker]
+label = "Enable Safety Checker"
+type = "boolean"
+default = true
+optional = true
+hidden = true
+
+[params.watermark]
+label = "Watermark"
+type = "boolean"
+default = false
+optional = true
+hidden = true
+
+[params.sync_mode]
+label = "Sync Mode"
+type = "boolean"
+default = false
+optional = true
+hidden = true
