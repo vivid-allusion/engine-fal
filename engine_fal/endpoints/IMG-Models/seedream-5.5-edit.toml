@@ -63,14 +63,12 @@ label = "Enable Safety Checker"
 type = "boolean"
 default = true
 optional = true
-hidden = true
 
 [params.watermark]
 label = "Watermark"
 type = "boolean"
 default = false
 optional = true
-hidden = true
 
 [params.sync_mode]
 label = "Sync Mode"

@@ -34,3 +34,5 @@ def test_settings_match_fal():
         assert (p["num_images"]["min"], p["num_images"]["max"]) == (1, 6)
         assert p["watermark"]["default"] is False
         assert p["sync_mode"]["hidden"] is True
+        assert not p["watermark"].get("hidden")
+        assert not p["enable_safety_checker"].get("hidden")
