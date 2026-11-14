@@ -36,3 +36,21 @@ def test_settings_match_fal():
         assert p["sync_mode"]["hidden"] is True
         assert not p["watermark"].get("hidden")
         assert not p["enable_safety_checker"].get("hidden")
+
+
+def test_layerize_takes_one_image_url():
+    d = load("seedream-5.5-layerize.toml")
+    assert d["endpoint"] == "bytedance/seedream/v5.5/layerize"
+    assert d["label"] == "Seedream 5.5 · Layerize"
+    assert d["general"]["image_url_param"] == "image_url"
+
+
+def test_layerize_settings_match_fal():
+    p = load("seedream-5.5-layerize.toml")["params"]
+    assert [o["value"] for o in p["image_size"]["options"]] == ["auto", "auto_1K", "auto_1.5K", "auto_2K"]
+    assert p["image_size"]["default"] == "auto"
+    assert (p["max_images"]["min"], p["max_images"]["max"], p["max_images"]["default"]) == (2, 100, 30)
+    assert [o["value"] for o in p["output_format"]["options"]] == ["png", "jpeg"]
+    assert p["watermark"]["default"] is False
+    assert p["sync_mode"]["hidden"] and p["enable_safety_checker"]["hidden"]
+    assert not p["enable_text_recognition"].get("hidden")
