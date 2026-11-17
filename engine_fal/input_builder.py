@@ -24,7 +24,8 @@ class FalInputBuilder:
         # fps is generator metadata (frame rate), never a provider input.
         fal_input.pop("fps", None)
 
-        fal_input["prompt"] = prompt
+        if self._profile.get("send_prompt", True):
+            fal_input["prompt"] = prompt
         ref_key = self._reference_key()
         end_key = self._profile.get("end_image_param")
         if ref_key == "reference_image_urls":

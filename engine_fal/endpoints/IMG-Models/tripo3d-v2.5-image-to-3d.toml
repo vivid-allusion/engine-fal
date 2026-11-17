@@ -1,0 +1,81 @@
+id = "tripo3d-v2.5-image-to-3d"
+label = "Tripo3D v2.5 · Picture to 3D"
+category = "IMG"
+platform = "fal"
+endpoint = "tripo3d/tripo/v2.5/image-to-3d"
+description = "Tripo3D v2.5 on fal — turns one picture into a 3D object (.glb). The model takes no prompt; line 1 of the Markdown file is only a note."
+
+[pricing]
+base_cost = 0.30
+currency = "USD"
+note = "fal list price per model: $0.20 without textures, $0.30 standard textures, $0.40 HD textures; quad adds $0.05."
+
+[general]
+image_url_param = "image_url"
+send_prompt = false
+
+[params.texture]
+label = "Texture"
+type = "select"
+default = "standard"
+options = [
+  { value = "no", label = "No texture" },
+  { value = "standard", label = "Standard" },
+  { value = "HD", label = "HD" },
+]
+
+[params.pbr]
+label = "PBR Materials"
+type = "boolean"
+default = false
+optional = true
+
+[params.quad]
+label = "Quad Mesh (+$0.05)"
+type = "boolean"
+default = false
+optional = true
+
+[params.face_limit]
+label = "Face Limit"
+type = "integer"
+optional = true
+description = "Limits the number of faces on the output model; adaptive when unset."
+
+[params.texture_alignment]
+label = "Texture Alignment"
+type = "select"
+default = "original_image"
+optional = true
+options = [
+  { value = "original_image", label = "Original Image" },
+  { value = "geometry", label = "Geometry" },
+]
+
+[params.orientation]
+label = "Orientation"
+type = "select"
+default = "default"
+optional = true
+options = [
+  { value = "default", label = "Default" },
+  { value = "align_image", label = "Align to Image" },
+]
+
+[params.auto_size]
+label = "Auto Size (real-world meters)"
+type = "boolean"
+default = false
+optional = true
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+
+[params.texture_seed]
+label = "Texture Seed"
+type = "integer"
+optional = true
+hidden = true

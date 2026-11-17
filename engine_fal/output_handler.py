@@ -139,9 +139,9 @@ class FalOutputHandler:
     def _infer_extension(self, url: str, media_type: str) -> str:
         if media_type == "video":
             return ".mp4"
-        for video_ext in (".mp4", ".mov", ".webm"):
-            if video_ext in url.lower():
-                return video_ext
+        for ext in (".mp4", ".mov", ".webm", ".glb"):
+            if ext in url.lower():
+                return ext
         return ".png"
 
     def _normalize_result(self, result, media_type: str) -> list:
@@ -150,6 +150,8 @@ class FalOutputHandler:
         if isinstance(result, list):
             return result
         if isinstance(result, dict):
+            if "model_mesh" in result:
+                return [result["model_mesh"]["url"]]
             if "images" in result:
                 return [img["url"] for img in result["images"]]
             if "video" in result:

@@ -273,6 +273,8 @@ class Engine(FalInputBuilder, FalOutputHandler, RetryPolicy):
         )
         if output_format and all(c.isalnum() for c in output_format):
             return f".{output_format}"
+        if str(self._profile.get("endpoint", "")).endswith("-to-3d"):
+            return ".glb"
         return ".mp4" if media_type == "video" else ".png"
 
     def _emit(
