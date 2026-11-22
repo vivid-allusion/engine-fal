@@ -1,15 +1,15 @@
-# engine-fal — Fal.ai Engine for studiolot
+# engine-fal — Fal.ai Engine for Helmer
 
-Engine wrapping the [Fal.ai](https://fal.ai) API behind studiolot's uniform
+Engine wrapping the [Fal.ai](https://fal.ai) API behind Helmer's uniform
 Engine interface. Generators (studio applications like Image Generator and
 Video Generator) call this Engine instead of importing the Fal SDK directly.
 
 ## Quick Start
 
 ```bash
-# Clone into a studiolot project
+# Clone into a Helmer project
 git clone https://github.com/vivid-allusion/engine-fal.git \
-  00_APPLICATIONS/ENGINES/engine-fal/
+  .00_TOOLS/GENERATORS/ENGINES/engine-fal/
 
 # Or pip install
 pip install git+https://github.com/vivid-allusion/engine-fal.git
@@ -102,8 +102,7 @@ could not be reached for that endpoint — re-run; it is not a verdict.
 
 ## Contract
 
-See [ENGINE_CONTRACT.md](https://github.com/vivid-allusion/studiolot/blob/main/docs/architecture/ENGINE_CONTRACT.md)
-in the studiolot repo for the full Engine specification.
+See `docs/architecture/ENGINE_CONTRACT.md` in the `helmer-transceiver` repo for the full Engine specification.
 
 ## License
 
