@@ -1,0 +1,52 @@
+id = "marigold-v2"
+label = "Marigold V2 · Depth Map"
+category = "DEPTH"
+platform = "fal"
+endpoint = "fal-ai/marigold-v2"
+description = "Marigold V2 on fal — turns one picture into a depth map. The model takes no prompt; line 1 of the Markdown file is only a note."
+
+[pricing]
+base_cost = 0.03
+currency = "USD"
+note = "fal list price: $0.03 per image; the output size does not change the price."
+
+[general]
+image_url_param = "image_url"
+send_prompt = false
+
+# fal also offers normals and albedo; a depth model offers depth maps only.
+[params.prediction_type]
+label = "Prediction Type"
+type = "select"
+default = "depth"
+optional = true
+options = [
+  { value = "depth", label = "Depth · Default" },
+  { value = "see-through-depth", label = "See-through Depth" },
+]
+
+[params.image_size]
+label = "Image Size"
+type = "select"
+optional = true
+options = [
+  { value = "square_hd", label = "square_hd · Square HD" },
+  { value = "square", label = "square · Square" },
+  { value = "portrait_4_3", label = "portrait_4_3 · 3:4 Portrait" },
+  { value = "portrait_16_9", label = "portrait_16_9 · 9:16 Portrait" },
+  { value = "landscape_4_3", label = "landscape_4_3 · 4:3 Landscape" },
+  { value = "landscape_16_9", label = "landscape_16_9 · 16:9 Landscape" },
+]
+description = "Inference size; unset uses the input picture's size rounded to a multiple of 16."
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true

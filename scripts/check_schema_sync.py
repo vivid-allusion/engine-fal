@@ -213,7 +213,9 @@ def _as_text(value: Any) -> str:
     return str(value).lower() if isinstance(value, bool) else str(value)
 
 
-def check_param(key: str, toml_param: dict, spec: dict, errors: list[str]) -> None:
+def check_param(
+    key: str, toml_param: dict, spec: dict, errors: list[str], depth: bool = False
+) -> None:
     """Verify a single [params.*] entry against its server shape."""
     want = _param_type(spec)
     if toml_param.get("type") != want:
@@ -226,7 +228,9 @@ def check_param(key: str, toml_param: dict, spec: dict, errors: list[str]) -> No
         if len(values) != len(set(values)):
             errors.append(f"param '{key}': duplicate option values in {values}")
         server = [_as_text(value) for value in spec.get("enum") or []]
-        if set(values) != set(server):
+        # A depth model offers depth maps only, so it may drop the enum's
+        # other kinds (Marigold V2's normals and albedo) but never invent one.
+        if set(values) != set(server) and not (depth and set(values) < set(server)):
             errors.append(f"param '{key}': options {values} != server enum {server}")
     if "default" in spec:
         declared = toml_param.get("default")
@@ -316,7 +320,7 @@ def check_toml(toml_path: Path, model: ModelInput) -> list[str]:
         if key in model.unrenderable:
             errors.append(f"param '{key}' has no renderable shape — list it as UNRENDERABLE")
             continue
-        check_param(key, toml_param, model.shapes[key], errors)
+        check_param(key, toml_param, model.shapes[key], errors, data.get("category") == "DEPTH")
         if key in model.required and toml_param.get("optional"):
             errors.append(f"param '{key}' is required server-side but marked optional")
 

@@ -1,0 +1,15 @@
+id = "zoe-depth"
+label = "ZoeDepth · Depth Map"
+category = "DEPTH"
+platform = "fal"
+endpoint = "fal-ai/image-preprocessors/zoe"
+description = "ZoeDepth on fal — turns one picture into a depth map. The model takes no prompt; line 1 of the Markdown file is only a note."
+
+[pricing]
+base_cost = 0.0
+currency = "USD"
+note = "fal list price: $0 per compute second."
+
+[general]
+image_url_param = "image_url"
+send_prompt = false

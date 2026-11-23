@@ -154,6 +154,8 @@ class FalOutputHandler:
                 return [result["model_mesh"]["url"]]
             if "images" in result:
                 return [img["url"] for img in result["images"]]
+            if "image" in result:
+                return [result["image"]["url"]]
             if "video" in result:
                 return [result["video"]["url"]]
             if "url" in result:

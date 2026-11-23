@@ -1,0 +1,56 @@
+id = "iris-z"
+label = "Iris-Z · Depth Map"
+category = "DEPTH"
+platform = "fal"
+endpoint = "speridlabs/iris-z"
+description = "Iris-Z on fal — turns one picture into a depth map (fal also sends a raw .npy depth map, which is not saved). The model takes no prompt; line 1 of the Markdown file is only a note."
+
+[pricing]
+base_cost = 0.01
+currency = "USD"
+note = "fal list price: $0.01 per ensemble member (default 1 member = $0.01; 10 members = $0.10)."
+
+[general]
+image_url_param = "image_url"
+send_prompt = false
+
+[params.ensemble_size]
+label = "Ensemble Size"
+type = "integer"
+default = 1
+optional = true
+min = 1
+max = 10
+description = "Number of seeds whose depth predictions are combined. Larger is more accurate and slower; each member is billed."
+
+[params.resolution]
+label = "Resolution"
+type = "select"
+default = "auto"
+optional = true
+options = [
+  { value = "auto", label = "Auto · Default" },
+  { value = "512", label = "512" },
+  { value = "1024", label = "1024" },
+]
+description = "Working resolution; auto uses 512 under 0.5 MP and 1024 otherwise. The depth map comes back at the input picture's size."
+
+[params.num_inference_steps]
+label = "Inference Steps"
+type = "integer"
+default = 4
+optional = true
+min = 1
+max = 16
+
+[params.seed]
+label = "Random Seed"
+type = "integer"
+optional = true
+hidden = true
+
+[params.enable_safety_checker]
+label = "Safety Checker"
+type = "boolean"
+default = true
+optional = true
