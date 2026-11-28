@@ -33,7 +33,7 @@ Coverage rules (per endpoint):
   schema does not accept, and a required property may not be marked optional.
 
 Unrenderable properties: a property whose only shapes are arrays or objects
-has no widget in the studiolot wizard (e.g. ``history``, ``loras``,
+has no widget in the Helmer wizard (e.g. ``history``, ``loras``,
 ``controlnet``). Those are exempt from coverage, and *exactly* that set is
 exempt — it is written in the TOML as a single ``# UNRENDERABLE:`` comment and
 the checker fails when the comment and the schema disagree. A property whose
